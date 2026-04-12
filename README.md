@@ -1,29 +1,29 @@
 <a id="readme-top"></a>
 
 <div align="center">
-  <a href="https://github.com/NathanDagDane/Clickett/graphs/contributors">
+  <a href="https://github.com/Nathan-Dane/Clickett/graphs/contributors">
     <picture>
-      <img src="https://img.shields.io/github/contributors/NathanDagDane/Clickett.svg?style=for-the-badge">
+      <img src="https://img.shields.io/github/contributors/Nathan-Dane/Clickett.svg?style=for-the-badge">
     </picture>
   </a>
-  <a href="https://github.com/NathanDagDane/Clickett/network/members">
+  <a href="https://github.com/Nathan-Dane/Clickett/network/members">
     <picture>
-      <img src="https://img.shields.io/github/forks/NathanDagDane/Clickett.svg?style=for-the-badge">
+      <img src="https://img.shields.io/github/forks/Nathan-Dane/Clickett.svg?style=for-the-badge">
     </picture>
   </a>
-  <a href="https://github.com/NathanDagDane/Clickett/stargazers">
+  <a href="https://github.com/Nathan-Dane/Clickett/stargazers">
     <picture>
-      <img src="https://img.shields.io/github/stars/NathanDagDane/Clickett.svg?style=for-the-badge">
+      <img src="https://img.shields.io/github/stars/Nathan-Dane/Clickett.svg?style=for-the-badge">
     </picture>
   </a>
-  <a href="https://github.com/NathanDagDane/Clickett/issues">
+  <a href="https://github.com/Nathan-Dane/Clickett/issues">
     <picture>
-      <img src="https://img.shields.io/github/issues/NathanDagDane/Clickett.svg?style=for-the-badge">
+      <img src="https://img.shields.io/github/issues/Nathan-Dane/Clickett.svg?style=for-the-badge">
     </picture>
   </a>
-  <a href="https://github.com/NathanDagDane/Clickett/blob/master/LICENSE.txt">
+  <a href="https://github.com/Nathan-Dane/Clickett/blob/master/LICENSE.txt">
     <picture>
-      <img src="https://img.shields.io/github/license/NathanDagDane/Clickett.svg?style=for-the-badge">
+      <img src="https://img.shields.io/github/license/Nathan-Dane/Clickett.svg?style=for-the-badge">
     </picture>
   </a>
   <a href="https://www.linkedin.com/in/nathan-dane/">
@@ -38,7 +38,7 @@
 <br />
 <div align="center">
   <a href="https://clickett.app">
-    <img src="https://raw.githubusercontent.com/NathanDagDane/Clickett/refs/heads/master/res/iconround.png" alt="Logo" width="100" height="100">
+    <img src="https://raw.githubusercontent.com/Nathan-Dane/Clickett/refs/heads/master/res/iconround.png" alt="Logo" width="100" height="100">
   </a>
 
   <h1>Clickett</h1>
@@ -62,7 +62,7 @@
     <br />
     <a href="https://clickett.app/help">Help Page</a>
     ·
-    <a href="https://github.com/NathanDagDane/Clickett/issues/new?assignees=&labels=bug%2Cuser&projects=&template=bug_report.yml&title=%5BBug%5D%3A">Report Bug</a>
+    <a href="https://github.com/Nathan-Dane/Clickett/issues/new?assignees=&labels=bug%2Cuser&projects=&template=bug_report.yml&title=%5BBug%5D%3A">Report Bug</a>
   </p>
 </div>
 
@@ -106,7 +106,7 @@
 <br />
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/NathanDagDane/Clickett/refs/heads/resources/screenshots/Clickett%20Enabled.png" alt="Clickett Screenshot" width="80%">
+  <img src="https://raw.githubusercontent.com/Nathan-Dane/Clickett/refs/heads/resources/screenshots/Clickett%20Enabled.png" alt="Clickett Screenshot" width="80%">
 </div>
 
 <br />
@@ -193,7 +193,7 @@ _For further steps, please refer to the [help page](https://clickett.app/help)_
     - [ ] Delete Settings View when Hidden
     - [ ] Delete Tutorial/Intro View when Hidden
 
-See the [open issues](https://github.com/NathanDagDane/Clickett/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/Nathan-Dane/Clickett/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -246,7 +246,7 @@ Don't forget to give the project a star! Thanks again!
 ### Top contributors:
 
 <a href="https://github.com/othneildrew/Best-README-Template/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=NathanDagDane/Clickett" alt="contrib.rocks image" />
+  <img src="https://contrib.rocks/image?repo=Nathan-Dane/Clickett" alt="contrib.rocks image" />
 </a>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -267,7 +267,7 @@ Distributed under the GPL-3.0 License. See `LICENSE.txt` for more information.
 
 Nathan Dane - clickett.help@gmail.com
 
-Project Link: [github.com/NathanDagDane/Clickett](https://github.com/NathanDagDane/Clickett)
+Project Link: [github.com/Nathan-Dane/Clickett](https://github.com/Nathan-Dane/Clickett)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
