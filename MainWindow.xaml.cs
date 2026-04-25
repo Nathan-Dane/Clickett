@@ -1,4 +1,4 @@
-﻿using Clickett.Services;
+using Clickett.Services;
 using Clickett.Services.Interfaces;
 using Clickett.ViewModels;
 using Microsoft.Toolkit.Uwp.Notifications;
@@ -23,13 +23,13 @@ using System.Windows.Threading;
 using Velopack;
 using Velopack.Sources;
 using Forms = System.Windows.Forms;
-using s = Clickett.Properties.Settings;
 
 namespace Clickett
 {
     public partial class MainWindow : Window
     {
         private readonly MainViewModel _viewModel;
+        private readonly ISettingsService _settings;
         // Clicking Configuration
         public bool interType, doLocation, rocket, jitter, doubleClick;
         private int clickInterval, modeInt, burstCount, threads;
@@ -71,6 +71,7 @@ namespace Clickett
             InitializeComponent();
 
             ISettingsService settingsService = new SettingsService();
+            _settings = settingsService;
             INotificationService notificationService = new NotificationService();
             IShellService shellService = new ShellService();
 
@@ -88,58 +89,58 @@ namespace Clickett
 
         private void InitializeThingies()
         {
-            try { hotkey = s.Default.hkAction; }
-            catch { hotkey = s.Default.hkAction = Key.Z; }
-            hkCtrl = s.Default.hkCtrl;
-            hkShift = s.Default.hkShift;
-            hkAlt = s.Default.hkAlt;
+            try { hotkey = _settings.Hotkey; }
+            catch { hotkey = _settings.Hotkey = Key.Z; }
+            hkCtrl = _settings.HotkeyCtrl;
+            hkShift = _settings.HotkeyShift;
+            hkAlt = _settings.HotkeyAlt;
             triggerDis.Text = (hkCtrl ? "Ctrl + " : "") + (hkShift ? "Shift + " : "") + (hkAlt ? "Alt + " : "") + KeyChar(hotkey);
-            curTheme = s.Default.Theme;
-            doAnimations = !s.Default.doAnimations;
+            curTheme = _settings.Theme;
+            doAnimations = !_settings.DoAnimations;
             ToggleAnim(this, null);
             doLocation = true;
             ToggleLoc(this, null);
-            jitter = !s.Default.jitter;
+            jitter = !_settings.Jitter;
             ToggleJit(this, null);
-            doubleClick = !s.Default.doubleClick;
+            doubleClick = !_settings.DoubleClick;
             ToggleDou(this, null);
             interType = true;
             millisInput.Text = "0";
             secondsInput.Text = "0";
             minutesInput.Text = "0";
-            clickInterval = s.Default.clickInterval;
+            clickInterval = _settings.ClickInterval;
             InterTypeSwap(this, null);
             rocket = true;
             RocketSwap(this, null);
-            burstCount = s.Default.burstCount;
+            burstCount = _settings.BurstCount;
             ModeChange(this, null);
             settOpen = true;
             SettingsToggle(this, null);
-            countTotal = !s.Default.countTotal;
+            countTotal = !_settings.CountTotal;
             ToggleCt(this, null);
-            aot = !s.Default.aot;
+            aot = !_settings.AlwaysOnTop;
             ToggleAot(this, null);
-            startup = !s.Default.startup;
+            startup = !_settings.Startup;
             ToggleStartup(this, null);
-            trayIcon = !s.Default.trayIcon;
+            trayIcon = !_settings.TrayIcon;
             ToggleTray(this, null);
-            minToTray = !s.Default.minToTray;
+            minToTray = !_settings.MinimizeToTray;
             ToggleMinTray(this, null);
             ToolTipService.SetInitialShowDelay(trigBorder, 69);
 
-            fullCanvas.Opacity = nOpacity = s.Default.normalOpacity;
+            fullCanvas.Opacity = nOpacity = _settings.NormalOpacity;
             nOpSlid.Value = nOpacity * 100;
-            cOpacity = s.Default.clickingOpacity;
+            cOpacity = _settings.ClickingOpacity;
             cOpSlid.Value = cOpacity * 100;
-            uiScaleSlid.Value = uiScale = s.Default.uiScale;
+            uiScaleSlid.Value = uiScale = _settings.UiScale;
             Width = uiScale * 6;
-            modeSel.SelectedIndex = modeInt = s.Default.modeInt;
+            modeSel.SelectedIndex = modeInt = _settings.ModeIndex;
             clickSel.SelectedIndex = 0;
-            totalText.Text = s.Default.totalClicks.ToString();
+            totalText.Text = _settings.TotalClicks.ToString();
             hudCurrentPriority = 5;
             clickDo = 0x02; //LMB = 0x02  MMB = 0x20  RMB = 0x08
             clickUp = 0x04; //LMB = 0x04  MMB = 0x40  RMB = 0x10
-            if (s.Default.welcomed)
+            if (_settings.Welcomed)
             {
                 fullGrid.Children.Remove(welcomeGrid);
             }
@@ -320,9 +321,9 @@ namespace Clickett
             Thread.Sleep(1);
             if (countTotal)
             {
-                s.Default.totalClicks += totalClickCounter;
-                s.Default.Save();
-                totalText.Text = s.Default.totalClicks.ToString();
+                _settings.TotalClicks += totalClickCounter;
+                _settings.Save();
+                totalText.Text = _settings.TotalClicks.ToString();
                 totalClickCounter = 0;
             }
         }
@@ -415,9 +416,9 @@ namespace Clickett
                 {
                     Dispatcher.Invoke((Action)(() =>
                     {
-                        s.Default.totalClicks += count;
-                        s.Default.Save();
-                        totalText.Text = s.Default.totalClicks.ToString();
+                        _settings.TotalClicks += count;
+                        _settings.Save();
+                        totalText.Text = _settings.TotalClicks.ToString();
                     }));
                     break;
                 }
@@ -522,14 +523,14 @@ namespace Clickett
         }
         private void AcceptTuto(object sender, RoutedEventArgs? e)
         {
-            s.Default.welcomed = true;
+            _settings.Welcomed = true;
             helpBut.Visibility = Visibility.Visible;
             fullGrid.Children.Remove(welcomeGrid);
             StartTuto(this, null);
         }
         private void DenyTuto(object sender, RoutedEventArgs? e)
         {
-            s.Default.welcomed = true;
+            _settings.Welcomed = true;
             helpMenu.Visibility = Visibility.Collapsed;
             fullGrid.Children.Remove(welcomeGrid);
             tutOverlay.Visibility = Visibility.Visible;
@@ -572,24 +573,24 @@ namespace Clickett
             _source.RemoveHook(Hooks);
             UnregisterHotkey();
 
-            s.Default.hkAction = hotkey;
-            s.Default.hkAlt = hkAlt;
-            s.Default.hkCtrl = hkCtrl;
-            s.Default.hkShift = hkShift;
-            s.Default.doubleClick = doubleClick;
-            s.Default.jitter = jitter;
-            s.Default.doAnimations = doAnimations;
-            s.Default.countTotal = countTotal;
-            s.Default.aot = aot;
-            s.Default.startup = startup;
-            s.Default.trayIcon = trayIcon;
-            s.Default.minToTray = minToTray;
-            s.Default.modeInt = modeInt;
-            s.Default.burstCount = burstCount;
-            s.Default.clickInterval = clickInterval;
-            s.Default.uiScale = uiScale;
-            s.Default.Theme = curTheme;
-            s.Default.Save();
+            _settings.Hotkey = hotkey;
+            _settings.HotkeyAlt = hkAlt;
+            _settings.HotkeyCtrl = hkCtrl;
+            _settings.HotkeyShift = hkShift;
+            _settings.DoubleClick = doubleClick;
+            _settings.Jitter = jitter;
+            _settings.DoAnimations = doAnimations;
+            _settings.CountTotal = countTotal;
+            _settings.AlwaysOnTop = aot;
+            _settings.Startup = startup;
+            _settings.TrayIcon = trayIcon;
+            _settings.MinimizeToTray = minToTray;
+            _settings.ModeIndex = modeInt;
+            _settings.BurstCount = burstCount;
+            _settings.ClickInterval = clickInterval;
+            _settings.UiScale = uiScale;
+            _settings.Theme = curTheme;
+            _settings.Save();
             _tbi.Dispose();
         }
         private void NewTrigger(object sender, RoutedEventArgs? e)
@@ -674,8 +675,8 @@ namespace Clickett
             }
             else OptionsArrow.RenderTransform = new RotateTransform(exOp ? 180.0 : 0.0, 0.5, 0.5);
 
-            s.Default.openedExOp = true;
-            s.Default.Save();
+            _settings.OpenedExtraOptions = true;
+            _settings.Save();
 
             if (inTuto && tutStep == 9)
             {
@@ -1149,17 +1150,17 @@ namespace Clickett
         }
         private void ToggleJit(object sender, RoutedEventArgs? e)
         {
-            jitter = s.Default.jitter = !jitter;
+            jitter = _settings.Jitter = !jitter;
             ColourToggle(jitBut, jitter);
             jitBorder.Opacity = jitter ? 1 : 0.4;
-            s.Default.Save();
+            _settings.Save();
         }
         private void ToggleDou(object sender, RoutedEventArgs? e)
         {
-            doubleClick = s.Default.doubleClick = !doubleClick;
+            doubleClick = _settings.DoubleClick = !doubleClick;
             ColourToggle(douBut, doubleClick);
             douBorder.Opacity = doubleClick ? 1 : 0.4;
-            s.Default.Save();
+            _settings.Save();
         }
         private void SetLoc(object sender, RoutedEventArgs? e)
         {
@@ -1367,32 +1368,32 @@ namespace Clickett
         // SETTINGS CHANGE
         private void ToggleAnim(object sender, RoutedEventArgs? e)
         {
-            doAnimations = s.Default.doAnimations = !doAnimations;
+            doAnimations = _settings.DoAnimations = !doAnimations;
             ColourToggle(animButt, doAnimations);
             animBorder.Opacity = doAnimations ? 1 : 0.4;
 
             UpdateMergedDictionaries();
 
-            s.Default.Save();
+            _settings.Save();
         }
         private void ToggleCt(object sender, RoutedEventArgs? e)
         {
-            countTotal = s.Default.countTotal = !countTotal;
+            countTotal = _settings.CountTotal = !countTotal;
             ColourToggle(ctButt, countTotal);
             ctBorder.Opacity = countTotal ? 1 : 0.4;
-            s.Default.Save();
+            _settings.Save();
         }
         private void ToggleAot(object sender, RoutedEventArgs? e)
         {
-            aot = s.Default.aot = !aot;
+            aot = _settings.AlwaysOnTop = !aot;
             Topmost = aot;
             ColourToggle(aotButt, aot);
             aotBorder.Opacity = aot ? 1 : 0.4;
-            s.Default.Save();
+            _settings.Save();
         }
         private void ToggleStartup(object sender, RoutedEventArgs? e)
         {
-            startup = s.Default.startup = !startup;
+            startup = _settings.Startup = !startup;
             ColourToggle(startupButt, startup);
             startupBorder.Opacity = startup ? 1 : 0.4;
             RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
@@ -1400,7 +1401,7 @@ namespace Clickett
             if (startup) key.SetValue("Clickett", System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\Clickett.exe", RegistryValueKind.ExpandString);
             else key.DeleteValue("Clickett", false);
 
-            s.Default.Save();
+            _settings.Save();
         }
         private void ToggleTray(object sender, RoutedEventArgs? e)
         {
@@ -1440,18 +1441,18 @@ namespace Clickett
                     return;
                 }
             }
-            trayIcon = s.Default.trayIcon = !trayIcon;
+            trayIcon = _settings.TrayIcon = !trayIcon;
             ColourToggle(trayButt, trayIcon);
             trayBorder.Opacity = trayIcon ? 1 : 0.4;
-            s.Default.Save();
+            _settings.Save();
         }
         private void ToggleMinTray(object sender, RoutedEventArgs? e)
         {
-            minToTray = s.Default.minToTray = !minToTray;
+            minToTray = _settings.MinimizeToTray = !minToTray;
             ColourToggle(minTrayButt, minToTray);
             minTrayBorder.Opacity = minToTray ? 1 : 0.4;
             if (minToTray && !trayIcon) ToggleTray(this, null);
-            s.Default.Save();
+            _settings.Save();
         }
         private void ColourToggle(Button b, bool colour)
         {
@@ -1463,9 +1464,9 @@ namespace Clickett
         }
         private void ScaleChange(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs? e)
         {
-            uiScale = s.Default.uiScale = (int)((Slider)sender).Value;
+            uiScale = _settings.UiScale = (int)((Slider)sender).Value;
             uiScaleSlid.Value = uiScale;
-            s.Default.Save();
+            _settings.Save();
             if (doAnimations)
             {
                 DoubleAnimation fadeOutAnimation = new DoubleAnimation(Width, uiScale * 6, TimeSpan.FromMilliseconds(200), FillBehavior.HoldEnd);
@@ -1477,7 +1478,7 @@ namespace Clickett
             {
                 Width = uiScale * 6;
             }
-            s.Default.Save();
+            _settings.Save();
         }
         private void NOpSliderChange(object sender, RoutedPropertyChangedEventArgs<double>? e)
         {
@@ -1485,7 +1486,7 @@ namespace Clickett
         }
         private void NOpChange(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs? e)
         {
-            nOpacity = s.Default.normalOpacity = (float)nOpSlid.Value / 100;
+            nOpacity = _settings.NormalOpacity = (float)nOpSlid.Value / 100;
             if (doAnimations)
             {
                 DoubleAnimation fadeOutAnimation = new DoubleAnimation(fullCanvas.Opacity, nOpacity, TimeSpan.FromMilliseconds(200), FillBehavior.HoldEnd);
@@ -1497,7 +1498,7 @@ namespace Clickett
             {
                 fullCanvas.Opacity = nOpacity;
             }
-            s.Default.Save();
+            _settings.Save();
         }
         private void COpSliderChange(object sender, RoutedPropertyChangedEventArgs<double>? e)
         {
@@ -1505,8 +1506,8 @@ namespace Clickett
         }
         private void COpChange(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs? e)
         {
-            cOpacity = s.Default.clickingOpacity = (float)cOpSlid.Value / 100;
-            s.Default.Save();
+            cOpacity = _settings.ClickingOpacity = (float)cOpSlid.Value / 100;
+            _settings.Save();
         }
 
         private void TcReset(object sender, RoutedEventArgs? e)
@@ -1529,9 +1530,9 @@ namespace Clickett
             else
             {
                 tcResetTimer.Stop();
-                s.Default.totalClicks = 0;
-                s.Default.Save();
-                totalText.Text = s.Default.totalClicks.ToString();
+                _settings.TotalClicks = 0;
+                _settings.Save();
+                totalText.Text = _settings.TotalClicks.ToString();
                 tcResetText.Text = "Count total clicks";
                 tcResetText.Opacity = 1;
                 awaitReset = false;
@@ -1542,8 +1543,8 @@ namespace Clickett
             curTheme = ((Button)sender).Tag.ToString();
             UpdateMergedDictionaries();
 
-            s.Default.Theme = curTheme;
-            s.Default.Save();
+            _settings.Theme = curTheme;
+            _settings.Save();
         }
 
 
@@ -1558,7 +1559,7 @@ namespace Clickett
         }
         private void LogoMouseEnter(object sender, MouseEventArgs? e)
         {
-            if (countTotal) CHT(2, "ShowScore", "Total Clicks\n" + s.Default.totalClicks.ToString());
+            if (countTotal) CHT(2, "ShowScore", "Total Clicks\n" + _settings.TotalClicks.ToString());
         }
         private void LogoMouseLeave(object sender, MouseEventArgs? e)
         {
@@ -1640,9 +1641,9 @@ namespace Clickett
         {
             if (newTrigListen && !new[] { Key.LeftShift, Key.RightShift, Key.LeftCtrl, Key.RightCtrl, Key.LeftAlt, Key.RightAlt, Key.LWin, Key.RWin, Key.System }.Contains(e.Key))
             {
-                hkShift = s.Default.hkShift = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
-                hkCtrl = s.Default.hkCtrl = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
-                hkAlt = s.Default.hkAlt = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
+                hkShift = _settings.HotkeyShift = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
+                hkCtrl = _settings.HotkeyCtrl = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
+                hkAlt = _settings.HotkeyAlt = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
                 try
                 {
                     var mod = 0;
@@ -1652,7 +1653,7 @@ namespace Clickett
                     RegisterHotKey(_mainWindowHandle, _hotkeyID, mod, KeyInterop.VirtualKeyFromKey(e.Key));
                     UnregisterHotkey();
                     triggerDis.Text = (hkCtrl ? "Ctrl + " : "") + (hkShift ? "Shift + " : "") + (hkAlt ? "Alt + " : "") + KeyChar(e.Key);
-                    hotkey = s.Default.hkAction = e.Key;
+                    hotkey = _settings.Hotkey = e.Key;
                 }
                 catch
                 {
@@ -1672,11 +1673,11 @@ namespace Clickett
                 trigSet.Width = 40;
                 trigSetText.Text = "Set";
 
-                s.Default.hkAction = hotkey;
-                s.Default.hkAlt = hkAlt;
-                s.Default.hkCtrl = hkCtrl;
-                s.Default.hkShift = hkShift;
-                s.Default.Save();
+                _settings.Hotkey = hotkey;
+                _settings.HotkeyAlt = hkAlt;
+                _settings.HotkeyCtrl = hkCtrl;
+                _settings.HotkeyShift = hkShift;
+                _settings.Save();
             }
             if (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt) || e.Key == Key.Tab) e.Handled = true;
         }
@@ -1754,12 +1755,12 @@ namespace Clickett
             {
                 try
                 {
-                    curTheme = s.Default.Theme;
+                    curTheme = _settings.Theme;
                     newRes.MergedDictionaries.Add(new ResourceDictionary() { Source = new Uri("res/dic/Themes/" + curTheme + ".xaml", UriKind.Relative) });
                 }
                 catch
                 {
-                    s.Default.Theme = curTheme = "Default";
+                    _settings.Theme = curTheme = "Default";
                     newRes.MergedDictionaries.Add(new ResourceDictionary() { Source = new Uri("res/dic/Themes/Default.xaml", UriKind.Relative) });
                 }
             }
