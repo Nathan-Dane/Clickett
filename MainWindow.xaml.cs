@@ -1,11 +1,11 @@
 using Clickett.Services;
 using Clickett.Services.Interfaces;
 using Clickett.ViewModels;
+using Clickett.Native;
 using Microsoft.Win32;
 using System;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -285,9 +285,9 @@ namespace Clickett
             blur.Radius = 10;
             fullGrid.Effect = blur;
 
-            if (doLocation) SetCursorPos((int)xPos, (int)yPos);
-            mouse_event(clickDo | clickUp, xPos, yPos, 0, 0); totalClickCounter++;
-            if (doubleClick) { mouse_event(clickDo | clickUp, xPos, yPos, 0, 0); totalClickCounter++; }
+            if (doLocation) NativeMethods.SetCursorPos((int)xPos, (int)yPos);
+            NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0); totalClickCounter++;
+            if (doubleClick) { NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0); totalClickCounter++; }
             if (modeInt == 0) IterateClick();
 
             Thread.Sleep(1);
@@ -340,8 +340,8 @@ namespace Clickett
                     {
                         Thread.Sleep((int)Math.Floor((float)clickInterval * (float)(new Random().Next(0, 6)) / 10f));
                     }
-                    mouse_event(clickDo | clickUp, xPos, yPos, 0, 0);
-                    mouse_event(clickDo | clickUp, xPos, yPos, 0, 0);
+                    NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0);
+                    NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0);
                     totalClickCounter++;
                     totalClickCounter++;
                     if (cap) IterateClick();
@@ -355,7 +355,7 @@ namespace Clickett
                     {
                         Thread.Sleep((int)Math.Floor((float)clickInterval * (float)(new Random().Next(0, 6)) / 10f));
                     }
-                    mouse_event(clickDo | clickUp, xPos, yPos, 0, 0);
+                    NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0);
                     totalClickCounter++;
                     if (cap) IterateClick();
                 }
@@ -407,8 +407,8 @@ namespace Clickett
                         }
                     }
                     count += 1;
-                    mouse_event(CclickDo | CclickUp, CxPos, CyPos, 0, 0);
-                    if (doub) mouse_event(CclickDo | CclickUp, CxPos, CyPos, 0, 0);
+                    NativeMethods.mouse_event(CclickDo | CclickUp, CxPos, CyPos, 0, 0);
+                    if (doub) NativeMethods.mouse_event(CclickDo | CclickUp, CxPos, CyPos, 0, 0);
 
                     Thread.Sleep(1);
                 }
@@ -427,7 +427,7 @@ namespace Clickett
         // ADDITIONAL HOOKS
         private void SetCurLoc(object sender, EventArgs? e)
         {
-            SetCursorPos((int)xPos, (int)yPos);
+            NativeMethods.SetCursorPos((int)xPos, (int)yPos);
         }
         private void HoldCheck(object sender, EventArgs? e)
         {
@@ -496,16 +496,16 @@ namespace Clickett
         private void RegisterHotkey()
         {
             var mod = 0;
-            if (hkAlt) mod |= 0x0001;
-            if (hkCtrl) mod |= 0x0002;
-            if (hkShift) mod |= 0x0004;
-            mod |= 0x4000;
-            RegisterHotKey(_mainWindowHandle, _hotkeyID, mod, KeyInterop.VirtualKeyFromKey(hotkey));
+            if (hkAlt) mod |= NativeConstants.ModAlt;
+            if (hkCtrl) mod |= NativeConstants.ModControl;
+            if (hkShift) mod |= NativeConstants.ModShift;
+            mod |= NativeConstants.ModNoRepeat;
+            NativeMethods.RegisterHotKey(_mainWindowHandle, _hotkeyID, mod, KeyInterop.VirtualKeyFromKey(hotkey));
 
         }
         private void UnregisterHotkey()
         {
-            UnregisterHotKey(_mainWindowHandle, _hotkeyID);
+            NativeMethods.UnregisterHotKey(_mainWindowHandle, _hotkeyID);
         }
 
 
@@ -1064,12 +1064,12 @@ namespace Clickett
 
         public static void SetWindowExTransparent(IntPtr hwnd)
         {
-            var extendedStyle = GetWindowLong(hwnd, -20); //-20: Extended Style (int)
-            SetWindowLong(hwnd, -20, extendedStyle | 0x00000020); //0x00000020: Transparent (int)
+            var extendedStyle = NativeMethods.GetWindowLong(hwnd, NativeConstants.GwlExStyle);
+            NativeMethods.SetWindowLong(hwnd, NativeConstants.GwlExStyle, extendedStyle | NativeConstants.WsExTransparent);
         }
         public static void SetWindowExDefault(IntPtr hwnd)
         {
-            SetWindowLong(hwnd, (-20), 0x00000000); //I don't need to explain what 0 is
+            NativeMethods.SetWindowLong(hwnd, NativeConstants.GwlExStyle, 0x00000000);
         }
 
 
@@ -1643,10 +1643,10 @@ namespace Clickett
                 try
                 {
                     var mod = 0;
-                    if (hkAlt) mod |= 1;
-                    if (hkCtrl) mod |= 2;
-                    if (hkShift) mod |= 4;
-                    RegisterHotKey(_mainWindowHandle, _hotkeyID, mod, KeyInterop.VirtualKeyFromKey(e.Key));
+                    if (hkAlt) mod |= NativeConstants.ModAlt;
+                    if (hkCtrl) mod |= NativeConstants.ModControl;
+                    if (hkShift) mod |= NativeConstants.ModShift;
+                    NativeMethods.RegisterHotKey(_mainWindowHandle, _hotkeyID, mod, KeyInterop.VirtualKeyFromKey(e.Key));
                     UnregisterHotkey();
                     triggerDis.Text = (hkCtrl ? "Ctrl + " : "") + (hkShift ? "Shift + " : "") + (hkAlt ? "Alt + " : "") + KeyChar(e.Key);
                     hotkey = _settings.Hotkey = e.Key;
@@ -1705,7 +1705,7 @@ namespace Clickett
         {
             var buf = new StringBuilder(256);
             var keyboardState = new byte[256];
-            ToUnicode((uint)KeyInterop.VirtualKeyFromKey(key), 0, keyboardState, buf, 256, 0);
+            NativeMethods.ToUnicode((uint)KeyInterop.VirtualKeyFromKey(key), 0, keyboardState, buf, 256, 0);
 
             var charStr = buf.ToString();
             if (charStr == "") charStr = key.ToString();
@@ -1771,23 +1771,5 @@ namespace Clickett
                 return;
             }
         }
-
-
-        // DLL IMPORTS
-        [DllImport("user32.dll", CharSet = CharSet.Auto, CallingConvention = CallingConvention.StdCall)]
-        public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint cButtons, uint dwExtraInfo);
-        [DllImport("user32.dll")]
-        static extern bool SetCursorPos(int x, int y);
-        [DllImport("user32.dll")]
-        internal static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
-        [DllImport("user32.dll")]
-        internal static extern bool UnregisterHotKey(IntPtr hWnd, int id);
-        [DllImport("user32.dll")]
-        public static extern int ToUnicode(uint virtualKeyCode, uint scanCode, byte[] keyboardState, [Out, MarshalAs(UnmanagedType.LPWStr, SizeConst = 64)] StringBuilder receivingBuffer, int bufferSize, uint flags);
-
-        [DllImport("user32.dll")]
-        static extern int GetWindowLong(IntPtr hwnd, int index);
-        [DllImport("user32.dll")]
-        static extern int SetWindowLong(IntPtr hwnd, int index, int newStyle);
     }
 }
