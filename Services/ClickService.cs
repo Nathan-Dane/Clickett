@@ -29,6 +29,15 @@ namespace Clickett.Services
 
             try
             {
+                DoClick(profile);
+
+                if (profile.IsBurstMode && _clickCount >= profile.BurstCount)
+                {
+                    BurstCompleted?.Invoke(this, EventArgs.Empty);
+                    Stop();
+                    return;
+                }
+
                 if (profile.RocketMode)
                     await RunRocketModeAsync(profile, _cts.Token);
                 else

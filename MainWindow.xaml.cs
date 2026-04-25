@@ -298,6 +298,7 @@ namespace Clickett
         {
             clicking = true;
             Focusable = false;
+
             dispatcherTimer.Interval = TimeSpan.FromMilliseconds(rocket ? 1 : (clickInterval * 0.8));
             hwnd = new WindowInteropHelper(this).Handle;
             SetWindowExTransparent(hwnd);
@@ -307,12 +308,6 @@ namespace Clickett
             var blur = new BlurEffect();
             blur.Radius = 10;
             fullGrid.Effect = blur;
-
-            if (doLocation) NativeMethods.SetCursorPos((int)xPos, (int)yPos);
-            NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0); totalClickCounter++;
-            if (doubleClick) { NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0); totalClickCounter++; }
-
-            Thread.Sleep(1);
 
             dispatcherTimer.Start();
 
