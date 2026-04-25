@@ -1,6 +1,7 @@
 using Clickett.Services;
 using Clickett.Services.Interfaces;
 using Clickett.ViewModels;
+using Clickett.Models;
 using Clickett.Native;
 using Microsoft.Win32;
 using System;
@@ -20,6 +21,7 @@ using System.Windows.Threading;
 using Velopack;
 using Velopack.Sources;
 using Forms = System.Windows.Forms;
+using ClickMode = Clickett.Models.ClickMode;
 
 namespace Clickett
 {
@@ -30,7 +32,9 @@ namespace Clickett
         private readonly INotificationService _notificationService;
         private readonly IShellService _shellService;
         private readonly ISettingsService _settings;
+
         // Clicking Configuration
+        private readonly ClickProfile _clickProfile = new();
         public bool interType, doLocation, rocket, jitter, doubleClick;
         private int clickInterval, modeInt, burstCount, threads;
         private uint clickDo, clickUp, xPos, yPos;
@@ -140,6 +144,20 @@ namespace Clickett
             hudCurrentPriority = 5;
             clickDo = 0x02; //LMB = 0x02  MMB = 0x20  RMB = 0x08
             clickUp = 0x04; //LMB = 0x04  MMB = 0x40  RMB = 0x10
+
+            _clickProfile.UseIntervalInput = interType;
+            _clickProfile.LockToLocation = doLocation;
+            _clickProfile.RocketMode = rocket;
+            _clickProfile.Jitter = jitter;
+            _clickProfile.DoubleClick = doubleClick;
+            _clickProfile.ClickInterval = clickInterval;
+            _clickProfile.Mode = (ClickMode)modeInt;
+            _clickProfile.BurstCount = burstCount;
+            _clickProfile.Threads = threads;
+            _clickProfile.XPosition = xPos;
+            _clickProfile.YPosition = yPos;
+            _clickProfile.MouseButton = MouseButtonType.Left;
+
             if (_settings.Welcomed)
             {
                 fullGrid.Children.Remove(welcomeGrid);
@@ -475,6 +493,8 @@ namespace Clickett
                     xPos = (uint)pointToScreen.X;
                     yPosInput.Text = pointToScreen.Y.ToString();
                     yPos = (uint)pointToScreen.Y;
+                    _clickProfile.XPosition = xPos;
+                    _clickProfile.YPosition = yPos;
                     Mouse.Capture(null);
 
                     newLocListen = false;
@@ -1136,6 +1156,7 @@ namespace Clickett
         private void ToggleLoc(object sender, RoutedEventArgs? e)
         {
             doLocation = !doLocation;
+            _clickProfile.LockToLocation = doLocation;
             ColourToggle(LocBut, doLocation);
             locBorder.Opacity = doLocation ? 1 : 0.4;
             xPosInput.IsEnabled = yPosInput.IsEnabled = locSetButt.IsEnabled = doLocation ? true : false;
@@ -1146,6 +1167,7 @@ namespace Clickett
         private void ToggleJit(object sender, RoutedEventArgs? e)
         {
             jitter = _settings.Jitter = !jitter;
+            _clickProfile.Jitter = jitter;
             ColourToggle(jitBut, jitter);
             jitBorder.Opacity = jitter ? 1 : 0.4;
             _settings.Save();
@@ -1153,6 +1175,7 @@ namespace Clickett
         private void ToggleDou(object sender, RoutedEventArgs? e)
         {
             doubleClick = _settings.DoubleClick = !doubleClick;
+            _clickProfile.DoubleClick = doubleClick;
             ColourToggle(douBut, doubleClick);
             douBorder.Opacity = doubleClick ? 1 : 0.4;
             _settings.Save();
@@ -1210,10 +1233,13 @@ namespace Clickett
             secondsInput.Text = seconds.ToString();
             minutesInput.Text = minutes.ToString();
             clickInterval = millis + (seconds * 1000) + (minutes * 60000);
+            _clickProfile.ClickInterval = clickInterval;
         }
         private void ModeChange(object sender, SelectionChangedEventArgs? e)
         {
             modeInt = modeSel.SelectedIndex;
+            _clickProfile.Mode = (ClickMode)modeInt;
+
             if (modeInt == 0)
             {
                 burstCountInput.Text = burstCount.ToString();
@@ -1223,26 +1249,22 @@ namespace Clickett
         }
         private void CliclChange(object sender, SelectionChangedEventArgs? e)
         {
-            switch (clickSel.SelectedIndex)
+            _clickProfile.MouseButton = clickSel.SelectedIndex switch
             {
-                case 0:
-                    clickDo = 0x02; //Left
-                    clickUp = 0x04;
-                    break;
-                case 1:
-                    clickDo = 0x20; //Middle
-                    clickUp = 0x40;
-                    break;
-                case 2:
-                    clickDo = 0x08; //Right
-                    clickUp = 0x10;
-                    break;
-            }
+                1 => MouseButtonType.Middle,
+                2 => MouseButtonType.Right,
+                _ => MouseButtonType.Left
+            };
+
+            clickDo = _clickProfile.ClickDownFlag;
+            clickUp = _clickProfile.ClickUpFlag;
         }
+
         private void cpsChange(object sender, RoutedPropertyChangedEventArgs<double>? e)
         {
             var cps = cpsSlid.Value;
             clickInterval = (int)Math.Round(1000 / cps);
+            _clickProfile.ClickInterval = clickInterval;
             interText.Text = "Clicks Per Second - " + cps;
             if (cps > 50)
             {
@@ -1257,6 +1279,7 @@ namespace Clickett
         private void ThreadsChange(object sender, RoutedPropertyChangedEventArgs<double>? e)
         {
             threads = (int)threadsSlid.Value;
+            _clickProfile.Threads = threads;
             var speed = "";
             if (threads < 3) speed = "Fast";
             else if (threads < 5) speed = "Very fast";
@@ -1281,6 +1304,7 @@ namespace Clickett
         private void RocketSwap(object sender, RoutedEventArgs? e)
         {
             rocket = !rocket;
+            _clickProfile.RocketMode = rocket;
 
             if (rocket)
             {
@@ -1307,6 +1331,7 @@ namespace Clickett
         private void InterTypeSwap(object sender, RoutedEventArgs? e)
         {
             interType = !interType;
+            _clickProfile.UseIntervalInput = interType;
             if (interType)
             {
                 interText.Text = "Click Interval";
@@ -1351,12 +1376,15 @@ namespace Clickett
             try { y = int.Parse(yPosInput.Text); } catch { yPosInput.Text = "0"; y = 0; }
             xPos = (uint)x;
             yPos = (uint)y;
+            _clickProfile.XPosition = xPos;
+            _clickProfile.YPosition = yPos;
         }
         private void ChangeBurstCount(object sender, RoutedEventArgs? e)
         {
             int count = 0;
             try { count = int.Parse(burstCountInput.Text); } catch { burstCountInput.Text = "0"; count = 0; }
             burstCount = count;
+            _clickProfile.BurstCount = burstCount;
         }
 
 
