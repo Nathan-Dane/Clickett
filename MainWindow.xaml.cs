@@ -1,13 +1,13 @@
-﻿using Microsoft.Toolkit.Uwp.Notifications;
+﻿using Clickett.Services;
+using Clickett.Services.Interfaces;
+using Clickett.ViewModels;
+using Microsoft.Toolkit.Uwp.Notifications;
 using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing.Printing;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography.Xml;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -29,6 +29,7 @@ namespace Clickett
 {
     public partial class MainWindow : Window
     {
+        private readonly MainViewModel _viewModel;
         // Clicking Configuration
         public bool interType, doLocation, rocket, jitter, doubleClick;
         private int clickInterval, modeInt, burstCount, threads;
@@ -68,15 +69,23 @@ namespace Clickett
         public MainWindow()
         {
             InitializeComponent();
+
+            ISettingsService settingsService = new SettingsService();
+            INotificationService notificationService = new NotificationService();
+            IShellService shellService = new ShellService();
+
+            _viewModel = new MainViewModel(settingsService, notificationService, shellService);
+            DataContext = _viewModel;
+
             InitializeThingies();
             TextOptions.SetTextRenderingMode(this, TextRenderingMode.Auto);
-            this.DataContext = this;
 
             _um = new UpdateManager(new GithubSource("https://github.com/NathanDagDane/Clickett", null, false));
 
             UpdateBut.Visibility = Visibility.Hidden;
             CheckUpdate(false);
         }
+
         private void InitializeThingies()
         {
             try { hotkey = s.Default.hkAction; }
