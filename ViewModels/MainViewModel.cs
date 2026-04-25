@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Windows.Input;
 using Clickett.Commands;
 using Clickett.Services.Interfaces;

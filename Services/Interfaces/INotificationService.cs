@@ -1,4 +1,4 @@
-﻿namespace Clickett.Services.Interfaces
+namespace Clickett.Services.Interfaces
 {
     public interface INotificationService
     {

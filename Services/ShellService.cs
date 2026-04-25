@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Clickett.Services.Interfaces;
 
 namespace Clickett.Services

@@ -1,4 +1,4 @@
-﻿using Clickett.Services.Interfaces;
+using Clickett.Services.Interfaces;
 using Microsoft.Toolkit.Uwp.Notifications;
 
 namespace Clickett.Services
