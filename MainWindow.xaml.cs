@@ -34,7 +34,7 @@ namespace Clickett
 
         // Clicking Configuration
         private readonly IClickService _clickService = new ClickService();
-        private CancellationTokenSource? _clickCancellationTokenSource;
+        private readonly IClickSessionController _clickSessionController;
         private readonly ClickProfile _clickProfile = new();
         public bool interType, doLocation, rocket, jitter, doubleClick;
         private int clickInterval, modeInt, burstCount, threads;
@@ -82,8 +82,10 @@ namespace Clickett
             _viewModel = new MainViewModel(settingsService, _notificationService, _shellService);
             DataContext = _viewModel;
 
-            _clickService.ClickCountChanged += OnClickServiceClickCountChanged;
-            _clickService.BurstCompleted += OnClickServiceBurstCompleted;
+            _clickSessionController = new ClickSessionController(_clickService);
+            _clickSessionController.ClickCountChanged += OnClickSessionClickCountChanged;
+            _clickSessionController.SessionEnded += OnClickSessionEnded;
+
 
             InitializeThingies();
             TextOptions.SetTextRenderingMode(this, TextRenderingMode.Auto);
@@ -314,13 +316,11 @@ namespace Clickett
 
             dispatcherTimer.Start();
 
-            _clickCancellationTokenSource = new CancellationTokenSource();
-            _ = _clickService.StartAsync(_clickProfile, _clickCancellationTokenSource.Token);
+            _ = _clickSessionController.StartAsync(_clickProfile);
         }
         private void ExitClickState()
         {
-            _clickCancellationTokenSource?.Cancel();
-            _clickService.Stop();
+            _clickSessionController.Stop();
 
             dispatcherTimer.Stop();
             clicking = false;
@@ -357,15 +357,20 @@ namespace Clickett
         {
             totalClickCounter++;
         }
-        private void OnClickServiceClickCountChanged(object? sender, long count)
+        private void OnClickSessionClickCountChanged(object? sender, long count)
         {
             totalClickCounter++;
         }
 
-        private void OnClickServiceBurstCompleted(object? sender, EventArgs e)
+        private void OnClickSessionEnded(object? sender, EventArgs e)
         {
-            Dispatcher.Invoke(ExitClickState);
+            Dispatcher.Invoke(() =>
+            {
+                if (clicking)
+                    ExitClickState();
+            });
         }
+
 
 
 
