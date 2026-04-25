@@ -1,10 +1,8 @@
 using Clickett.Services;
 using Clickett.Services.Interfaces;
 using Clickett.ViewModels;
-using Microsoft.Toolkit.Uwp.Notifications;
 using Microsoft.Win32;
 using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -29,6 +27,8 @@ namespace Clickett
     public partial class MainWindow : Window
     {
         private readonly MainViewModel _viewModel;
+        private readonly INotificationService _notificationService;
+        private readonly IShellService _shellService;
         private readonly ISettingsService _settings;
         // Clicking Configuration
         public bool interType, doLocation, rocket, jitter, doubleClick;
@@ -72,10 +72,10 @@ namespace Clickett
 
             ISettingsService settingsService = new SettingsService();
             _settings = settingsService;
-            INotificationService notificationService = new NotificationService();
-            IShellService shellService = new ShellService();
+            _notificationService = new NotificationService();
+            _shellService = new ShellService();
 
-            _viewModel = new MainViewModel(settingsService, notificationService, shellService);
+            _viewModel = new MainViewModel(settingsService, _notificationService, _shellService);
             DataContext = _viewModel;
 
             InitializeThingies();
@@ -538,15 +538,15 @@ namespace Clickett
         }
         private void HelpLink(object sender, RoutedEventArgs? e)
         {
-            Process.Start(new ProcessStartInfo("https://clickett.app/help") { UseShellExecute = true });
+            _shellService.OpenUrl("https://clickett.app/help");
         }
         private void OpenGithubLink(object sender, RoutedEventArgs? e)
         {
-            Process.Start(new ProcessStartInfo("https://github.com/NathanDagDane") { UseShellExecute = true });
+            _shellService.OpenUrl("https://github.com/NathanDagDane");
         }
         private void HelpContact(object sender, RoutedEventArgs? e)
         {
-            Process.Start(new ProcessStartInfo("mailto:clickett.help@gmail.com?subject=Clickett%20Support") { UseShellExecute = true });
+            _shellService.OpenEmail("mailto:clickett.help@gmail.com?subject=Clickett%20Support");
         }
         private void HelpExit(object sender, RoutedEventArgs? e)
         {
@@ -555,7 +555,7 @@ namespace Clickett
         }
         private void WarnLink(object sender, RoutedEventArgs? e)
         {
-            Process.Start(new ProcessStartInfo("https://github.com/NathanDagDane/Clickett/wiki/Getting-Started,-Help-and-FAQ#only-69-clicks-per-second") { UseShellExecute = true });
+            _shellService.OpenUrl("https://github.com/NathanDagDane/Clickett/wiki/Getting-Started,-Help-and-FAQ#only-69-clicks-per-second");
         }
         private void AppMin(object sender, RoutedEventArgs? e)
         {
@@ -647,7 +647,7 @@ namespace Clickett
         }
         private void SupportLink(object sender, RoutedEventArgs? e)
         {
-            Process.Start(new ProcessStartInfo("https://nathandagdane.github.io/Clickett/Donate/") { UseShellExecute = true });
+            _shellService.OpenUrl("https://nathandagdane.github.io/Clickett/Donate/");
         }
         private void ToggleExOp(object sender, RoutedEventArgs? e)
         {
@@ -1605,13 +1605,9 @@ namespace Clickett
 
 
         // UTIL METHODS
-        private void MakeNotification(string title, string meat)
+        private void MakeNotification(string title, string? meat)
         {
-            ToastNotificationManagerCompat.History.Clear();
-            new ToastContentBuilder()
-                .AddText(title)
-                .AddText(meat)
-                .Show();
+            _notificationService.Show(title, meat);
         }
         private void CHT(int priority, string token, string text) // Change Hud Text
         {
