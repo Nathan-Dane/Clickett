@@ -1,7 +1,7 @@
-using Clickett.Models;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Clickett.Models;
 
 namespace Clickett.Services.Interfaces
 {

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Clickett.Models;
@@ -10,6 +11,7 @@ namespace Clickett.Services
     public sealed class ClickService : IClickService
     {
         private CancellationTokenSource? _cts;
+        private readonly List<Task> _rocketTasks = new();
         private long _clickCount;
 
         public bool IsClicking { get; private set; }
@@ -27,15 +29,18 @@ namespace Clickett.Services
 
             try
             {
-                await RunClickLoopAsync(profile, _cts.Token);
+                if (profile.RocketMode)
+                    await RunRocketModeAsync(profile, _cts.Token);
+                else
+                    await RunNormalModeAsync(profile, _cts.Token);
             }
             catch (OperationCanceledException)
             {
-                // Expected when stopping.
             }
             finally
             {
                 IsClicking = false;
+                _rocketTasks.Clear();
             }
         }
 
@@ -44,7 +49,7 @@ namespace Clickett.Services
             _cts?.Cancel();
         }
 
-        private async Task RunClickLoopAsync(ClickProfile profile, CancellationToken token)
+        private async Task RunNormalModeAsync(ClickProfile profile, CancellationToken token)
         {
             int burstProgress = 0;
             int interval = Math.Max(1, profile.ClickInterval);
@@ -52,9 +57,12 @@ namespace Clickett.Services
 
             while (!token.IsCancellationRequested)
             {
+                if (profile.Jitter)
+                    await ApplyJitterAsync(interval, token);
+
                 DoClick(profile);
 
-                burstProgress++;
+                burstProgress += profile.DoubleClick ? 2 : 1;
 
                 if (capped && burstProgress >= profile.BurstCount)
                 {
@@ -65,6 +73,62 @@ namespace Clickett.Services
 
                 await Task.Delay(interval, token);
             }
+        }
+
+        private async Task RunRocketModeAsync(ClickProfile profile, CancellationToken token)
+        {
+            int threadCount = Math.Max(1, profile.Threads);
+
+            for (int i = 0; i < threadCount; i++)
+            {
+                int workerIndex = i;
+
+                _rocketTasks.Add(Task.Run(() =>
+                {
+                    RunRocketWorker(profile, workerIndex, threadCount, token);
+                }, token));
+
+                await Task.Delay(1, token);
+            }
+
+            await Task.WhenAll(_rocketTasks);
+        }
+
+        private void RunRocketWorker(
+            ClickProfile profile,
+            int workerIndex,
+            int threadCount,
+            CancellationToken token)
+        {
+            int localClicks = 0;
+            bool capped = profile.IsBurstMode;
+            int workerBurstLimit = capped
+                ? (int)Math.Ceiling((float)profile.BurstCount / threadCount)
+                : int.MaxValue;
+
+            while (!token.IsCancellationRequested)
+            {
+                if (capped && localClicks >= workerBurstLimit)
+                {
+                    BurstCompleted?.Invoke(this, EventArgs.Empty);
+                    Stop();
+                    return;
+                }
+
+                DoClick(profile);
+
+                localClicks += profile.DoubleClick ? 2 : 1;
+
+                Thread.Sleep(1);
+            }
+        }
+
+        private async Task ApplyJitterAsync(int interval, CancellationToken token)
+        {
+            int jitterDelay = (int)Math.Floor(interval * Random.Shared.Next(0, 6) / 10f);
+
+            if (jitterDelay > 0)
+                await Task.Delay(jitterDelay, token);
         }
 
         private void DoClick(ClickProfile profile)
@@ -81,8 +145,7 @@ namespace Clickett.Services
                 0,
                 0);
 
-            _clickCount++;
-            ClickCountChanged?.Invoke(this, _clickCount);
+            RegisterClick();
 
             if (profile.DoubleClick)
             {
@@ -93,9 +156,14 @@ namespace Clickett.Services
                     0,
                     0);
 
-                _clickCount++;
-                ClickCountChanged?.Invoke(this, _clickCount);
+                RegisterClick();
             }
+        }
+
+        private void RegisterClick()
+        {
+            long count = Interlocked.Increment(ref _clickCount);
+            ClickCountChanged?.Invoke(this, count);
         }
     }
 }

@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -58,7 +57,6 @@ namespace Clickett
 
         // Misc ig
         private DispatcherTimer dispatcherTimer = new DispatcherTimer(DispatcherPriority.Send), tcResetTimer;
-        private PeriodicTimer pTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(1));
 
         private Forms.NotifyIcon _tbi;
 
@@ -311,25 +309,13 @@ namespace Clickett
             if (doLocation) NativeMethods.SetCursorPos((int)xPos, (int)yPos);
             NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0); totalClickCounter++;
             if (doubleClick) { NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0); totalClickCounter++; }
-            if (modeInt == 0) IterateClick();
 
             Thread.Sleep(1);
 
             dispatcherTimer.Start();
-            if (!rocket)
-            {
-                _clickCancellationTokenSource = new CancellationTokenSource();
-                _ = _clickService.StartAsync(_clickProfile, _clickCancellationTokenSource.Token);
-            }
-            else
-            {
-                for (int i = 0; i < threads; i++)
-                {
-                    Thread clickHandler = new Thread(Clicker);
-                    clickHandler.Start();
-                    Thread.Sleep(1);
-                }
-            }
+
+            _clickCancellationTokenSource = new CancellationTokenSource();
+            _ = _clickService.StartAsync(_clickProfile, _clickCancellationTokenSource.Token);
         }
         private void ExitClickState()
         {
@@ -338,7 +324,6 @@ namespace Clickett
 
             dispatcherTimer.Stop();
             clicking = false;
-            pTimer.Dispose();
             Focusable = true;
             SetWindowExDefault(hwnd);
             fullCanvas.Opacity = nOpacity;
@@ -354,103 +339,7 @@ namespace Clickett
                 totalClickCounter = 0;
             }
         }
-        private async Task Clicking(int clickInterval) // Performs actual clicking
-        {
-            var cap = (modeInt == 0); // Whether limited to number of clicks before stopping
-            pTimer = new(TimeSpan.FromMilliseconds(clickInterval));
-
-            if (doubleClick)
-            {
-                while (await pTimer.WaitForNextTickAsync()) // Double-clicking loop
-                {
-                    if (jitter)
-                    {
-                        Thread.Sleep((int)Math.Floor((float)clickInterval * (float)(new Random().Next(0, 6)) / 10f));
-                    }
-                    NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0);
-                    NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0);
-                    totalClickCounter++;
-                    totalClickCounter++;
-                    if (cap) IterateClick();
-                }
-            }
-            else
-            {
-                while (await pTimer.WaitForNextTickAsync()) // Clicking loop
-                {
-                    if (jitter)
-                    {
-                        Thread.Sleep((int)Math.Floor((float)clickInterval * (float)(new Random().Next(0, 6)) / 10f));
-                    }
-                    NativeMethods.mouse_event(clickDo | clickUp, xPos, yPos, 0, 0);
-                    totalClickCounter++;
-                    if (cap) IterateClick();
-                }
-            }
-        }
-        void Clicker() // Performs Rocket Mode clicking (Thread instances)
-        {
-            var count = 0;
-            uint CclickDo = 0;
-            uint CclickUp = 0;
-            var CdoLoc = false;
-            var CdoCount = false;
-            uint CxPos = 0;
-            uint CyPos = 0;
-            var CburstCount = 0;
-            var doub = false;
-
-            Dispatcher.Invoke((Action)(() =>
-            {
-                CclickDo = clickDo;
-                CclickUp = clickUp;
-                CdoLoc = doLocation;
-                CdoCount = modeInt == 0;
-                CxPos = xPos;
-                CyPos = yPos;
-                CburstCount = (int)Math.Ceiling((float)burstCount / (float)threads);
-                doub = doubleClick;
-            }));
-
-            while (true)
-            {
-                bool doClick = true;
-                Dispatcher.Invoke((Action)(() =>
-                {
-                    doClick = clicking;
-                }));
-
-                if (doClick)
-                {
-                    if (CdoCount)
-                    {
-                        if (count >= CburstCount)
-                        {
-                            Dispatcher.Invoke((Action)(() =>
-                            {
-                                ExitClickState();
-                            }));
-                            break;
-                        }
-                    }
-                    count += 1;
-                    NativeMethods.mouse_event(CclickDo | CclickUp, CxPos, CyPos, 0, 0);
-                    if (doub) NativeMethods.mouse_event(CclickDo | CclickUp, CxPos, CyPos, 0, 0);
-
-                    Thread.Sleep(1);
-                }
-                else
-                {
-                    Dispatcher.Invoke((Action)(() =>
-                    {
-                        _settings.TotalClicks += count;
-                        _settings.Save();
-                        totalText.Text = _settings.TotalClicks.ToString();
-                    }));
-                    break;
-                }
-            }
-        }
+        
         // ADDITIONAL HOOKS
         private void SetCurLoc(object sender, EventArgs? e)
         {
@@ -462,16 +351,6 @@ namespace Clickett
             {
                 dispatcherTimer.Tick -= HoldCheck;
                 ExitClickState();
-            }
-        }
-        private void IterateClick()
-        {
-            clickCounter++;
-            if (clickCounter >= burstCount)
-            {
-                ExitClickState();
-                clickCounter = 0;
-                return;
             }
         }
         private void CountTotal(object sender, EventArgs? e)
