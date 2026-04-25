@@ -6,7 +6,6 @@ using Microsoft.Win32;
 using System;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,6 +25,7 @@ namespace Clickett
 {
     public partial class MainWindow : Window
     {
+        private readonly IHotkeyService _hotkeyService = new HotkeyService();
         private readonly MainViewModel _viewModel;
         private readonly INotificationService _notificationService;
         private readonly IShellService _shellService;
@@ -94,7 +94,7 @@ namespace Clickett
             hkCtrl = _settings.HotkeyCtrl;
             hkShift = _settings.HotkeyShift;
             hkAlt = _settings.HotkeyAlt;
-            triggerDis.Text = (hkCtrl ? "Ctrl + " : "") + (hkShift ? "Shift + " : "") + (hkAlt ? "Alt + " : "") + KeyChar(hotkey);
+            triggerDis.Text = _hotkeyService.FormatHotkey(hotkey, hkCtrl, hkShift, hkAlt);
             curTheme = _settings.Theme;
             doAnimations = !_settings.DoAnimations;
             ToggleAnim(this, null);
@@ -456,8 +456,8 @@ namespace Clickett
         // HOTKEY
         private IntPtr Hooks(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            var hotkeyID = wParam.ToInt64();
-            if (hotkeyID != _hotkeyID) { return IntPtr.Zero; }
+            if (!_hotkeyService.IsHotkeyMessage(wParam, _hotkeyID))
+                return IntPtr.Zero;
             if (active)
             {
                 HotkeyPressed();
@@ -495,17 +495,12 @@ namespace Clickett
         }
         private void RegisterHotkey()
         {
-            var mod = 0;
-            if (hkAlt) mod |= NativeConstants.ModAlt;
-            if (hkCtrl) mod |= NativeConstants.ModControl;
-            if (hkShift) mod |= NativeConstants.ModShift;
-            mod |= NativeConstants.ModNoRepeat;
-            NativeMethods.RegisterHotKey(_mainWindowHandle, _hotkeyID, mod, KeyInterop.VirtualKeyFromKey(hotkey));
+            _hotkeyService.Register(_mainWindowHandle, _hotkeyID, hotkey, hkCtrl, hkShift, hkAlt);
 
         }
         private void UnregisterHotkey()
         {
-            NativeMethods.UnregisterHotKey(_mainWindowHandle, _hotkeyID);
+            _hotkeyService.Unregister(_mainWindowHandle, _hotkeyID);
         }
 
 
@@ -1642,14 +1637,12 @@ namespace Clickett
                 hkAlt = _settings.HotkeyAlt = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
                 try
                 {
-                    var mod = 0;
-                    if (hkAlt) mod |= NativeConstants.ModAlt;
-                    if (hkCtrl) mod |= NativeConstants.ModControl;
-                    if (hkShift) mod |= NativeConstants.ModShift;
-                    NativeMethods.RegisterHotKey(_mainWindowHandle, _hotkeyID, mod, KeyInterop.VirtualKeyFromKey(e.Key));
-                    UnregisterHotkey();
-                    triggerDis.Text = (hkCtrl ? "Ctrl + " : "") + (hkShift ? "Shift + " : "") + (hkAlt ? "Alt + " : "") + KeyChar(e.Key);
+                    _hotkeyService.Register(_mainWindowHandle, _hotkeyID, e.Key, hkCtrl, hkShift, hkAlt);
+                    _hotkeyService.Unregister(_mainWindowHandle, _hotkeyID);
+
+                    triggerDis.Text = _hotkeyService.FormatHotkey(e.Key, hkCtrl, hkShift, hkAlt);
                     hotkey = _settings.Hotkey = e.Key;
+
                 }
                 catch
                 {
@@ -1700,19 +1693,6 @@ namespace Clickett
         {
             Regex regex = new Regex("[^0-9]+");
             e.Handled = regex.IsMatch(e.Text);
-        }
-        static string KeyChar(Key key)
-        {
-            var buf = new StringBuilder(256);
-            var keyboardState = new byte[256];
-            NativeMethods.ToUnicode((uint)KeyInterop.VirtualKeyFromKey(key), 0, keyboardState, buf, 256, 0);
-
-            var charStr = buf.ToString();
-            if (charStr == "") charStr = key.ToString();
-
-            charStr = charStr[0].ToString().ToUpper() + charStr.Substring(1).ToLower();
-
-            return charStr;
         }
         public string AssemblyVersion
         {
