@@ -34,6 +34,8 @@ namespace Clickett
         private readonly ISettingsService _settings;
 
         // Clicking Configuration
+        private readonly IClickService _clickService = new ClickService();
+        private CancellationTokenSource? _clickCancellationTokenSource;
         private readonly ClickProfile _clickProfile = new();
         public bool interType, doLocation, rocket, jitter, doubleClick;
         private int clickInterval, modeInt, burstCount, threads;
@@ -81,6 +83,9 @@ namespace Clickett
 
             _viewModel = new MainViewModel(settingsService, _notificationService, _shellService);
             DataContext = _viewModel;
+
+            _clickService.ClickCountChanged += OnClickServiceClickCountChanged;
+            _clickService.BurstCompleted += OnClickServiceBurstCompleted;
 
             InitializeThingies();
             TextOptions.SetTextRenderingMode(this, TextRenderingMode.Auto);
@@ -313,7 +318,8 @@ namespace Clickett
             dispatcherTimer.Start();
             if (!rocket)
             {
-                _ = Clicking(clickInterval);
+                _clickCancellationTokenSource = new CancellationTokenSource();
+                _ = _clickService.StartAsync(_clickProfile, _clickCancellationTokenSource.Token);
             }
             else
             {
@@ -327,6 +333,9 @@ namespace Clickett
         }
         private void ExitClickState()
         {
+            _clickCancellationTokenSource?.Cancel();
+            _clickService.Stop();
+
             dispatcherTimer.Stop();
             clicking = false;
             pTimer.Dispose();
@@ -469,6 +478,16 @@ namespace Clickett
         {
             totalClickCounter++;
         }
+        private void OnClickServiceClickCountChanged(object? sender, long count)
+        {
+            totalClickCounter++;
+        }
+
+        private void OnClickServiceBurstCompleted(object? sender, EventArgs e)
+        {
+            Dispatcher.Invoke(ExitClickState);
+        }
+
 
 
         // HOTKEY

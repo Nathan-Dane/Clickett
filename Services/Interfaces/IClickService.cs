@@ -1,4 +1,6 @@
+using Clickett.Models;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Clickett.Services.Interfaces
@@ -8,8 +10,9 @@ namespace Clickett.Services.Interfaces
         bool IsClicking { get; }
 
         event EventHandler<long>? ClickCountChanged;
+        event EventHandler? BurstCompleted;
 
-        Task StartAsync();
+        Task StartAsync(ClickProfile profile, CancellationToken cancellationToken);
         void Stop();
     }
 }
