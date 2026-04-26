@@ -20,7 +20,6 @@ using System.Windows.Threading;
 using Velopack;
 using Velopack.Sources;
 using ClickMode = Clickett.Models.ClickMode;
-using Forms = System.Windows.Forms;
 
 namespace Clickett
 {
@@ -31,6 +30,9 @@ namespace Clickett
         private readonly INotificationService _notificationService;
         private readonly IShellService _shellService;
         private readonly ISettingsService _settings;
+        private readonly IStartupService _startupService = new StartupService();
+        private readonly ITrayIconService _trayIconService = new TrayIconService();
+
 
         // Clicking Configuration
         private readonly IAutoClickerController _autoClickerController;
@@ -57,8 +59,6 @@ namespace Clickett
 
         // Misc ig
         private DispatcherTimer tcResetTimer;
-
-        private Forms.NotifyIcon _tbi;
 
         private UpdateManager _um;
         private UpdateInfo _update;
@@ -93,6 +93,16 @@ namespace Clickett
             _autoClickerController.ClickingStarted += OnAutoClickerClickingStarted;
             _autoClickerController.ClickingStopped += OnAutoClickerClickingStopped;
             _autoClickerController.ClickCountChanged += OnAutoClickerClickCountChanged;
+
+            _trayIconService.ActivateRequested += (_, _) => Activate(this, null);
+            _trayIconService.OpenRequested += (_, _) =>
+            {
+                WindowState = WindowState.Normal;
+                ShowInTaskbar = true;
+                Activate();
+            };
+            _trayIconService.ExitRequested += (_, _) => Close();
+
 
             InitializeComponent();
 
@@ -219,13 +229,7 @@ namespace Clickett
 
                 if (trayIcon)
                 {
-                    try
-                    {
-                        _tbi.Icon = new System.Drawing.Icon(
-                            System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\res\iconcircbw.ico");
-
-                        _tbi.ContextMenuStrip.Items[0].Text = "Activate";
-                    }
+                    try { _trayIconService.SetActiveState(false); }
                     catch { }
                 }
 
@@ -314,13 +318,7 @@ namespace Clickett
 
                 if (trayIcon)
                 {
-                    try
-                    {
-                        _tbi.Icon = new System.Drawing.Icon(
-                            System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\res\iconcirc.ico");
-
-                        _tbi.ContextMenuStrip.Items[0].Text = "Deactivate";
-                    }
+                    try { _trayIconService.SetActiveState(true); }
                     catch { }
                 }
 
@@ -650,7 +648,7 @@ namespace Clickett
             _settings.UiScale = uiScale;
             _settings.Theme = curTheme;
             _settings.Save();
-            _tbi.Dispose();
+            _trayIconService.Dispose();
         }
         private void NewTrigger(object sender, RoutedEventArgs? e)
         {
@@ -1440,58 +1438,55 @@ namespace Clickett
         private void ToggleStartup(object sender, RoutedEventArgs? e)
         {
             startup = _settings.Startup = !startup;
+
+            if (startup)
+                _startupService.EnableStartup();
+            else
+                _startupService.DisableStartup();
+
             ColourToggle(startupButt, startup);
             startupBorder.Opacity = startup ? 1 : 0.4;
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
-
-            if (startup) key.SetValue("Clickett", System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\Clickett.exe", RegistryValueKind.ExpandString);
-            else key.DeleteValue("Clickett", false);
 
             _settings.Save();
         }
+
         private void ToggleTray(object sender, RoutedEventArgs? e)
         {
-            if (!trayIcon)
+            try
             {
-                try
+                if (!trayIcon)
+                    _trayIconService.Show(_autoClickerController.IsActive);
+                else
                 {
-                    _tbi = new Forms.NotifyIcon();
-                    _tbi.Text = "Clickett";
-                    _tbi.ContextMenuStrip = new Forms.ContextMenuStrip();
-                    _tbi.ContextMenuStrip.Font = new System.Drawing.Font("LEMON MILK Pro FTR", 10);
-                    _tbi.ContextMenuStrip.ImageScalingSize = System.Drawing.Size.Empty;
-                    _tbi.ContextMenuStrip.BackColor = System.Drawing.Color.FromArgb(255, 69, 170, 150);
-                    _tbi.ContextMenuStrip.ForeColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
-                    if (active) { _tbi.ContextMenuStrip.Items.Add("Deactivate", null, (s, e) => { Activate(this, null); }); _tbi.Icon = new System.Drawing.Icon(System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\res\iconcirc.ico"); }
-                    else { _tbi.ContextMenuStrip.Items.Add("Activate", null, (s, e) => { Activate(this, null); }); _tbi.Icon = new System.Drawing.Icon(System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\res\iconcircbw.ico"); }
-                    _tbi.ContextMenuStrip.Items.Add("Open", null, (s, e) => { WindowState = WindowState.Normal; Activate(); });
-                    var temp = _tbi.ContextMenuStrip.Items.Add("Exit", null, (s, e) => { Close(); });
-                    _tbi.DoubleClick += (s, e) => { Activate(this, null); };
-                    _tbi.Visible = true;
+                    _trayIconService.Hide();
+
+                    if (minToTray)
+                        ToggleMinTray(this, null);
                 }
-                catch
-                {
-                    MakeNotification("Tray icon died", "There was a problem setting up the tray icon. The tray icon option has been disabled.");
-                    ToggleTray(this, null);
-                }
+
+                trayIcon = _settings.TrayIcon = !trayIcon;
+
+                ColourToggle(trayButt, trayIcon);
+                trayBorder.Opacity = trayIcon ? 1 : 0.4;
+
+                _settings.Save();
             }
-            else
+            catch
             {
-                try
-                {
-                    _tbi.Dispose();
-                    if (minToTray) ToggleMinTray(this, null);
-                }
-                catch {
-                    MakeNotification("Error", "Failed to remove tray icon");
-                    return;
-                }
+                MakeNotification(
+                    "Tray icon died",
+                    "There was a problem setting up the tray icon. The tray icon option has been disabled.");
+
+                if (trayIcon)
+                    _trayIconService.Hide();
+
+                trayIcon = _settings.TrayIcon = false;
+                ColourToggle(trayButt, false);
+                trayBorder.Opacity = 0.4;
+                _settings.Save();
             }
-            trayIcon = _settings.TrayIcon = !trayIcon;
-            ColourToggle(trayButt, trayIcon);
-            trayBorder.Opacity = trayIcon ? 1 : 0.4;
-            _settings.Save();
         }
+
         private void ToggleMinTray(object sender, RoutedEventArgs? e)
         {
             minToTray = _settings.MinimizeToTray = !minToTray;
