@@ -35,7 +35,6 @@ namespace Clickett
         private readonly IAutoClickerController _autoClickerController;
         private readonly IClickService _clickService = new ClickService();
         private readonly IClickSessionController _clickSessionController;
-        private readonly ClickProfile _clickProfile = new();
         public bool interType, doLocation, rocket, jitter, doubleClick;
         private int clickInterval, modeInt, burstCount, threads;
         private uint clickDo, clickUp, xPos, yPos;
@@ -72,7 +71,6 @@ namespace Clickett
         // STARTUP LOGIC
         public MainWindow()
         {
-            InitializeComponent();
 
             ISettingsService settingsService = new SettingsService();
             _settings = settingsService;
@@ -94,6 +92,7 @@ namespace Clickett
             _autoClickerController.ClickingStopped += OnAutoClickerClickingStopped;
             _autoClickerController.ClickCountChanged += OnAutoClickerClickCountChanged;
 
+            InitializeComponent();
 
             InitializeThingies();
             TextOptions.SetTextRenderingMode(this, TextRenderingMode.Auto);
@@ -158,18 +157,18 @@ namespace Clickett
             clickDo = 0x02; //LMB = 0x02  MMB = 0x20  RMB = 0x08
             clickUp = 0x04; //LMB = 0x04  MMB = 0x40  RMB = 0x10
 
-            _clickProfile.UseIntervalInput = interType;
-            _clickProfile.LockToLocation = doLocation;
-            _clickProfile.RocketMode = rocket;
-            _clickProfile.Jitter = jitter;
-            _clickProfile.DoubleClick = doubleClick;
-            _clickProfile.ClickInterval = clickInterval;
-            _clickProfile.Mode = (ClickMode)modeInt;
-            _clickProfile.BurstCount = burstCount;
-            _clickProfile.Threads = threads;
-            _clickProfile.XPosition = xPos;
-            _clickProfile.YPosition = yPos;
-            _clickProfile.MouseButton = MouseButtonType.Left;
+            ClickProfile.UseIntervalInput = interType;
+            ClickProfile.LockToLocation = doLocation;
+            ClickProfile.RocketMode = rocket;
+            ClickProfile.Jitter = jitter;
+            ClickProfile.DoubleClick = doubleClick;
+            ClickProfile.ClickInterval = clickInterval;
+            ClickProfile.Mode = (ClickMode)modeInt;
+            ClickProfile.BurstCount = burstCount;
+            ClickProfile.Threads = threads;
+            ClickProfile.XPosition = xPos;
+            ClickProfile.YPosition = yPos;
+            ClickProfile.MouseButton = MouseButtonType.Left;
 
             if (_settings.Welcomed)
             {
@@ -198,7 +197,7 @@ namespace Clickett
             if (inTuto && tutStep == 14)
                 TutoNext(this, null);
 
-            if (active)
+            if (IsActive)
             {
                 UnregisterHotkey();
 
@@ -296,8 +295,7 @@ namespace Clickett
                     return;
                 }
 
-                _clickProfile.Hotkey = hotkey;
-                _autoClickerController.UpdateProfile(_clickProfile);
+                ClickProfile.Hotkey = hotkey;
                 _autoClickerController.Activate();
 
                 active = true;
@@ -371,8 +369,7 @@ namespace Clickett
 
         private void HotkeyPressed()
         {
-            _clickProfile.Hotkey = hotkey;
-            _autoClickerController.UpdateProfile(_clickProfile);
+            ClickProfile.Hotkey = hotkey;
             _autoClickerController.HandleHotkeyPressed();
         }
 
@@ -381,36 +378,37 @@ namespace Clickett
         {
             active = true;
             clicking = false;
-
-            ApplyActivatedVisualState();
         }
 
         private void OnAutoClickerDeactivated(object? sender, EventArgs e)
         {
             active = false;
             clicking = false;
-
-            ApplyDeactivatedVisualState();
         }
 
         private void OnAutoClickerClickingStarted(object? sender, EventArgs e)
         {
             clicking = true;
-
             ApplyClickingVisualState();
         }
 
         private void OnAutoClickerClickingStopped(object? sender, EventArgs e)
         {
             clicking = false;
-
             ApplyNotClickingVisualState();
         }
+
 
         private void OnAutoClickerClickCountChanged(object? sender, long count)
         {
             totalClickCounter++;
         }
+
+        private ClickProfile ClickProfile => _autoClickerController.Profile;
+
+        private bool IsActive => _autoClickerController.IsActive;
+        private bool IsClicking => _autoClickerController.IsClicking;
+
 
         // VISUAL STATES
         private void ApplyActivatedVisualState()
@@ -504,8 +502,8 @@ namespace Clickett
                     xPos = (uint)pointToScreen.X;
                     yPosInput.Text = pointToScreen.Y.ToString();
                     yPos = (uint)pointToScreen.Y;
-                    _clickProfile.XPosition = xPos;
-                    _clickProfile.YPosition = yPos;
+                    ClickProfile.XPosition = xPos;
+                    ClickProfile.YPosition = yPos;
                     Mouse.Capture(null);
 
                     newLocListen = false;
@@ -595,7 +593,7 @@ namespace Clickett
         }
         private void OnExit(object sender, EventArgs e)
         {
-            clicking = false;
+            _autoClickerController.StopClicking();
             _source.RemoveHook(Hooks);
             UnregisterHotkey();
 
@@ -1167,7 +1165,7 @@ namespace Clickett
         private void ToggleLoc(object sender, RoutedEventArgs? e)
         {
             doLocation = !doLocation;
-            _clickProfile.LockToLocation = doLocation;
+            ClickProfile.LockToLocation = doLocation;
             ColourToggle(LocBut, doLocation);
             locBorder.Opacity = doLocation ? 1 : 0.4;
             xPosInput.IsEnabled = yPosInput.IsEnabled = locSetButt.IsEnabled = doLocation ? true : false;
@@ -1176,7 +1174,7 @@ namespace Clickett
         private void ToggleJit(object sender, RoutedEventArgs? e)
         {
             jitter = _settings.Jitter = !jitter;
-            _clickProfile.Jitter = jitter;
+            ClickProfile.Jitter = jitter;
             ColourToggle(jitBut, jitter);
             jitBorder.Opacity = jitter ? 1 : 0.4;
             _settings.Save();
@@ -1184,7 +1182,7 @@ namespace Clickett
         private void ToggleDou(object sender, RoutedEventArgs? e)
         {
             doubleClick = _settings.DoubleClick = !doubleClick;
-            _clickProfile.DoubleClick = doubleClick;
+            ClickProfile.DoubleClick = doubleClick;
             ColourToggle(douBut, doubleClick);
             douBorder.Opacity = doubleClick ? 1 : 0.4;
             _settings.Save();
@@ -1242,12 +1240,12 @@ namespace Clickett
             secondsInput.Text = seconds.ToString();
             minutesInput.Text = minutes.ToString();
             clickInterval = millis + (seconds * 1000) + (minutes * 60000);
-            _clickProfile.ClickInterval = clickInterval;
+            ClickProfile.ClickInterval = clickInterval;
         }
         private void ModeChange(object sender, SelectionChangedEventArgs? e)
         {
             modeInt = modeSel.SelectedIndex;
-            _clickProfile.Mode = (ClickMode)modeInt;
+            ClickProfile.Mode = (ClickMode)modeInt;
 
             if (modeInt == 0)
             {
@@ -1258,22 +1256,22 @@ namespace Clickett
         }
         private void CliclChange(object sender, SelectionChangedEventArgs? e)
         {
-            _clickProfile.MouseButton = clickSel.SelectedIndex switch
+            ClickProfile.MouseButton = clickSel.SelectedIndex switch
             {
                 1 => MouseButtonType.Middle,
                 2 => MouseButtonType.Right,
                 _ => MouseButtonType.Left
             };
 
-            clickDo = _clickProfile.ClickDownFlag;
-            clickUp = _clickProfile.ClickUpFlag;
+            clickDo = ClickProfile.ClickDownFlag;
+            clickUp = ClickProfile.ClickUpFlag;
         }
 
         private void cpsChange(object sender, RoutedPropertyChangedEventArgs<double>? e)
         {
             var cps = cpsSlid.Value;
             clickInterval = (int)Math.Round(1000 / cps);
-            _clickProfile.ClickInterval = clickInterval;
+            ClickProfile.ClickInterval = clickInterval;
             interText.Text = "Clicks Per Second - " + cps;
             if (cps > 50)
             {
@@ -1288,7 +1286,7 @@ namespace Clickett
         private void ThreadsChange(object sender, RoutedPropertyChangedEventArgs<double>? e)
         {
             threads = (int)threadsSlid.Value;
-            _clickProfile.Threads = threads;
+            ClickProfile.Threads = threads;
             var speed = "";
             if (threads < 3) speed = "Fast";
             else if (threads < 5) speed = "Very fast";
@@ -1313,7 +1311,7 @@ namespace Clickett
         private void RocketSwap(object sender, RoutedEventArgs? e)
         {
             rocket = !rocket;
-            _clickProfile.RocketMode = rocket;
+            ClickProfile.RocketMode = rocket;
 
             if (rocket)
             {
@@ -1340,7 +1338,7 @@ namespace Clickett
         private void InterTypeSwap(object sender, RoutedEventArgs? e)
         {
             interType = !interType;
-            _clickProfile.UseIntervalInput = interType;
+            ClickProfile.UseIntervalInput = interType;
             if (interType)
             {
                 interText.Text = "Click Interval";
@@ -1385,15 +1383,15 @@ namespace Clickett
             try { y = int.Parse(yPosInput.Text); } catch { yPosInput.Text = "0"; y = 0; }
             xPos = (uint)x;
             yPos = (uint)y;
-            _clickProfile.XPosition = xPos;
-            _clickProfile.YPosition = yPos;
+            ClickProfile.XPosition = xPos;
+            ClickProfile.YPosition = yPos;
         }
         private void ChangeBurstCount(object sender, RoutedEventArgs? e)
         {
             int count = 0;
             try { count = int.Parse(burstCountInput.Text); } catch { burstCountInput.Text = "0"; count = 0; }
             burstCount = count;
-            _clickProfile.BurstCount = burstCount;
+            ClickProfile.BurstCount = burstCount;
         }
 
 

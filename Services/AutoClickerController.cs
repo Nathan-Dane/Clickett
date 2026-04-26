@@ -11,7 +11,7 @@ namespace Clickett.Services
         private readonly IClickSessionController _clickSessionController;
         private readonly DispatcherTimer _holdTimer;
 
-        private ClickProfile _profile = new();
+        public ClickProfile Profile { get; } = new();
 
         public bool IsActive { get; private set; }
         public bool IsClicking { get; private set; }
@@ -40,9 +40,9 @@ namespace Clickett.Services
             _holdTimer.Tick += HoldCheck;
         }
 
-        public void UpdateProfile(ClickProfile profile)
+        public void UpdateProfile(Action<ClickProfile> update)
         {
-            _profile = profile;
+            update(Profile);
         }
 
         public void ToggleActive()
@@ -76,7 +76,7 @@ namespace Clickett.Services
         {
             if (!IsActive) return;
 
-            switch (_profile.Mode)
+            switch (Profile.Mode)
             {
                 case ClickMode.Burst:
                     if (IsClicking)
@@ -121,15 +121,15 @@ namespace Clickett.Services
 
             ClickingStarted?.Invoke(this, EventArgs.Empty);
 
-            _ = _clickSessionController.StartAsync(_profile);
+            _ = _clickSessionController.StartAsync(Profile);
         }
 
         private void HoldCheck(object? sender, EventArgs e)
         {
-            if (_profile.Mode != ClickMode.Hold)
+            if (Profile.Mode != ClickMode.Hold)
                 return;
 
-            if (Keyboard.IsKeyUp(_profile.Hotkey))
+            if (Keyboard.IsKeyUp(Profile.Hotkey))
             {
                 StopClicking();
             }

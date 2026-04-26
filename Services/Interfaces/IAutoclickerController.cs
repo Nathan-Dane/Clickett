@@ -7,6 +7,7 @@ namespace Clickett.Services.Interfaces
     {
         bool IsActive { get; }
         bool IsClicking { get; }
+        ClickProfile Profile { get; }
 
         event EventHandler? Activated;
         event EventHandler? Deactivated;
@@ -14,11 +15,13 @@ namespace Clickett.Services.Interfaces
         event EventHandler? ClickingStopped;
         event EventHandler<long>? ClickCountChanged;
 
-        void UpdateProfile(ClickProfile profile);
         void ToggleActive();
         void Activate();
         void Deactivate();
+
         void HandleHotkeyPressed();
         void StopClicking();
+
+        void UpdateProfile(Action<ClickProfile> update);
     }
 }
