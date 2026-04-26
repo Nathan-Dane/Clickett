@@ -560,26 +560,10 @@ namespace Clickett
             tutOverlay.Visibility = Visibility.Visible;
             TutoExit(this, null);
         }
-        private void HelpLink(object sender, RoutedEventArgs? e)
-        {
-            _shellService.OpenUrl("https://clickett.app/help");
-        }
-        private void OpenGithubLink(object sender, RoutedEventArgs? e)
-        {
-            _shellService.OpenUrl("https://github.com/NathanDagDane");
-        }
-        private void HelpContact(object sender, RoutedEventArgs? e)
-        {
-            _shellService.OpenEmail("mailto:clickett.help@gmail.com?subject=Clickett%20Support");
-        }
         private void HelpExit(object sender, RoutedEventArgs? e)
         {
             FocusItem(69);
             helpMenu.Visibility = Visibility.Collapsed;
-        }
-        private void WarnLink(object sender, RoutedEventArgs? e)
-        {
-            _shellService.OpenUrl("https://github.com/NathanDagDane/Clickett/wiki/Getting-Started,-Help-and-FAQ#only-69-clicks-per-second");
         }
         private void AppMin(object sender, RoutedEventArgs? e)
         {
@@ -668,10 +652,6 @@ namespace Clickett
                 Storyboard.SetTargetProperty(settAnim, new PropertyPath("RenderTransform.Children[0].Angle"));
                 settStoryboard.Begin(this);
             }
-        }
-        private void SupportLink(object sender, RoutedEventArgs? e)
-        {
-            _shellService.OpenUrl("https://nathandagdane.github.io/Clickett/Donate/");
         }
         private void ToggleExOp(object sender, RoutedEventArgs? e)
         {

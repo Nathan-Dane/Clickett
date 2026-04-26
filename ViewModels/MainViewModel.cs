@@ -25,9 +25,21 @@ namespace Clickett.ViewModels
             _notificationService = notificationService;
             _shellService = shellService;
 
-            OpenHelpCommand = new RelayCommand(OpenHelp);
-            OpenGithubCommand = new RelayCommand(OpenGithub);
-            OpenContactCommand = new RelayCommand(OpenContact);
+            OpenHelpCommand = new RelayCommand(() =>
+                _shellService.OpenUrl("https://clickett.app/help"));
+
+            OpenGithubCommand = new RelayCommand(() =>
+                _shellService.OpenUrl("https://github.com/Nathan-Dane"));
+
+            OpenContactCommand = new RelayCommand(() =>
+                _shellService.OpenEmail("mailto:clickett.help@gmail.com?subject=Clickett%20Support"));
+
+            OpenWarningCommand = new RelayCommand(() =>
+                _shellService.OpenUrl("https://github.com/NathanDagDane/Clickett/wiki/Getting-Started,-Help-and-FAQ#only-69-clicks-per-second"));
+
+            OpenSupportCommand = new RelayCommand(() =>
+                _shellService.OpenUrl("https://nathandagdane.github.io/Clickett/Donate/"));
+
             ShowNotificationCommand = new RelayCommand(_ =>
                 _notificationService.Show("Clickett", "Notification service is working."));
         }
@@ -62,21 +74,8 @@ namespace Clickett.ViewModels
         public ICommand OpenHelpCommand { get; }
         public ICommand OpenGithubCommand { get; }
         public ICommand OpenContactCommand { get; }
+        public ICommand OpenWarningCommand { get; }
+        public ICommand OpenSupportCommand { get; }
         public ICommand ShowNotificationCommand { get; }
-
-        private void OpenHelp()
-        {
-            _shellService.OpenUrl("https://clickett.app/help");
-        }
-
-        private void OpenGithub()
-        {
-            _shellService.OpenUrl("https://github.com/NathanDagDane");
-        }
-
-        private void OpenContact()
-        {
-            _shellService.OpenEmail("mailto:clickett.help@gmail.com?subject=Clickett%20Support");
-        }
     }
 }
