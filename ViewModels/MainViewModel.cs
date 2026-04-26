@@ -1,7 +1,8 @@
+using Clickett.Commands;
+using Clickett.Services;
+using Clickett.Services.Interfaces;
 using System.Reflection;
 using System.Windows.Input;
-using Clickett.Commands;
-using Clickett.Services.Interfaces;
 
 namespace Clickett.ViewModels
 {
@@ -12,6 +13,7 @@ namespace Clickett.ViewModels
         private readonly IShellService _shellService;
         private readonly IStartupService _startupService;
         private readonly ITrayIconService _trayIconService;
+        private readonly IUpdateService _updateService;
 
 
         private bool _isActive;
@@ -30,19 +32,25 @@ namespace Clickett.ViewModels
         private bool _trayIcon;
         private bool _minimizeToTray;
 
+        //Update
+        private bool _isUpdateAvailable;
+        private int _updateProgress;
+
 
         public MainViewModel(
                 ISettingsService settingsService,
                 INotificationService notificationService,
                 IShellService shellService,
                 IStartupService startupService,
-                ITrayIconService trayIconService)
+                ITrayIconService trayIconService,
+                IUpdateService updateService)
         {
             _settingsService = settingsService;
             _notificationService = notificationService;
             _shellService = shellService;
             _startupService = startupService;
             _trayIconService = trayIconService;
+            _updateService = updateService;
 
             OpenHelpCommand = new RelayCommand(() =>
                 _shellService.OpenUrl("https://clickett.app/help"));
@@ -62,6 +70,27 @@ namespace Clickett.ViewModels
             ToggleStartupCommand = new RelayCommand(ToggleStartup);
             ToggleTrayIconCommand = new RelayCommand(ToggleTrayIcon);
             ToggleMinimizeToTrayCommand = new RelayCommand(ToggleMinimizeToTray);
+
+            CheckUpdateCommand = new AsyncRelayCommand(() =>
+                _updateService.CheckAndDownloadUpdateAsync(true));
+
+            InstallUpdateCommand = new RelayCommand(() =>
+                _updateService.ApplyUpdateAndRestart());
+
+            // Update Subscribe
+            _updateService.UpdateAvailable += (_, _) => IsUpdateAvailable = true;
+            _updateService.DownloadProgressChanged += (_, progress) =>
+            {
+                UpdateProgress = progress;
+
+                if (progress == 100)
+                    IsUpdateAvailable = true;
+            };
+            _updateService.UpdateCheckFailed += (_, message) =>
+                _notificationService.Show("Update Error", message);
+            _updateService.UpdateDownloadFailed += (_, message) =>
+                _notificationService.Show("Download Error", message);
+
         }
 
 
@@ -182,6 +211,21 @@ namespace Clickett.ViewModels
             _settingsService.Save();
         }
 
+        // Update
+
+        public bool IsUpdateAvailable
+        {
+            get => _isUpdateAvailable;
+            set => SetProperty(ref _isUpdateAvailable, value);
+        }
+
+        public int UpdateProgress
+        {
+            get => _updateProgress;
+            set => SetProperty(ref _updateProgress, value);
+        }
+
+
 
 
         public ICommand OpenHelpCommand { get; }
@@ -201,5 +245,9 @@ namespace Clickett.ViewModels
         public ICommand ToggleStartupCommand { get; }
         public ICommand ToggleTrayIconCommand { get; }
         public ICommand ToggleMinimizeToTrayCommand { get; }
+
+        // Update
+        public ICommand CheckUpdateCommand { get; }
+        public ICommand InstallUpdateCommand { get; }
     }
 }

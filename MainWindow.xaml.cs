@@ -3,10 +3,8 @@ using Clickett.Native;
 using Clickett.Services;
 using Clickett.Services.Interfaces;
 using Clickett.ViewModels;
-using Microsoft.Win32;
 using System;
 using System.ComponentModel;
-using System.ComponentModel.Design;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -18,8 +16,6 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Threading;
-using Velopack;
-using Velopack.Sources;
 using ClickMode = Clickett.Models.ClickMode;
 
 namespace Clickett
@@ -33,6 +29,7 @@ namespace Clickett
         private readonly ISettingsService _settings;
         private readonly IStartupService _startupService = new StartupService();
         private readonly ITrayIconService _trayIconService = new TrayIconService();
+        private readonly IUpdateService _updateService;
 
 
         // Clicking Configuration
@@ -62,9 +59,6 @@ namespace Clickett
         private bool _isInitialized;
         private DispatcherTimer tcResetTimer;
 
-        private UpdateManager _um;
-        private UpdateInfo _update;
-
         private IntPtr hwnd;
         private IntPtr _mainWindowHandle;
         private HwndSource _source;
@@ -88,12 +82,16 @@ namespace Clickett
             _clickSessionController = new ClickSessionController(_clickService);
             _autoClickerController = new AutoClickerController(_clickSessionController);
 
+            IUpdateService updateService = new UpdateService();
+            _updateService = updateService;
+
             _viewModel = new MainViewModel(
                 settingsService,
                 _notificationService,
                 _shellService,
                 startupService,
-                trayIconService);
+                trayIconService,
+                updateService);
 
             // Now XAML can safely fire events that touch ClickProfile
             InitializeComponent();
@@ -125,10 +123,8 @@ namespace Clickett
 
             TextOptions.SetTextRenderingMode(this, TextRenderingMode.Auto);
 
-            _um = new UpdateManager(new GithubSource("https://github.com/NathanDagDane/Clickett", null, false));
-
             UpdateBut.Visibility = Visibility.Hidden;
-            CheckUpdate(false);
+            _ = _updateService.CheckAndDownloadUpdateAsync(false);
         }
 
 
@@ -564,6 +560,17 @@ namespace Clickett
                     minTrayBorder.Opacity = minToTray ? 1 : 0.4;
                     break;
 
+                case nameof(MainViewModel.IsUpdateAvailable):
+                    UpdateBut.Visibility = _viewModel.IsUpdateAvailable
+                        ? Visibility.Visible
+                        : Visibility.Collapsed;
+                    break;
+
+                case nameof(MainViewModel.UpdateProgress):
+                    if (_viewModel.UpdateProgress == 100)
+                        UpdateBut.Visibility = Visibility.Visible;
+                    // Can add download progress here
+                    break;
             }
         }
 
@@ -1079,8 +1086,8 @@ namespace Clickett
                 case 8:
                     jitBut.IsEnabled = true;
                     jitBorder.Effect = null;
-                    ToggleJit(this, null);
-                    ToggleJit(this, null);
+                    //ToggleJit(this, null);
+                    //ToggleJit(this, null);
                     break;
                 case 9:
                     douBut.IsEnabled = true;
@@ -1132,12 +1139,12 @@ namespace Clickett
                     ProfBorder.Opacity = 1;
                     ProfBorder.Effect = null;
                     jitBorder.Effect = null;
-                    ToggleJit(this, null);
-                    ToggleJit(this, null);
+                    //ToggleJit(this, null);
+                    //ToggleJit(this, null);
                     jitBut.IsEnabled = true;
                     douBorder.Effect = null;
-                    ToggleDou(this, null);
-                    ToggleDou(this, null);
+                    //ToggleDou(this, null);
+                    //ToggleDou(this, null);
                     douBut.IsEnabled = true;
                     trigBor.Opacity = 1;
                     trigBor.Effect = null;
@@ -1169,66 +1176,13 @@ namespace Clickett
 
 
         // UPDATING LOGIC
-        private async void CheckUpdate(bool manual)
-        {
-            UpdateBut.Visibility = Visibility.Collapsed;
-            try
-            {
-                // ConfigureAwait(true) so that UpdateStatus() is called on the UI thread
-                _update = await _um.CheckForUpdatesAsync().ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                if (manual) MakeNotification("Update Error", "Failed to check for updates");
-                return;
-            }
-
-            if (_update == null)
-            {
-                if (manual) MakeNotification("Up to Date!", "You're on the latest version!");
-                return;
-            }
-
-            MakeNotification("Update Available", null);
-
-            try
-            {
-                await _um.DownloadUpdatesAsync(_update, UpdateDownloadProgress).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    await _um.DownloadUpdatesAsync(_update, UpdateDownloadProgress, ignoreDeltas: true).ConfigureAwait(false);
-                }
-                catch (Exception exc)
-                {
-                    if (manual) MakeNotification("Download Error", "Failed to download update");
-                }
-            }
-        }
-        private void UpdateDownloadProgress(int percent)
-        {
-            // progress can be sent from other threads
-            this.Dispatcher.InvokeAsync(() =>
-            {
-
-                //CHT(2, "UpdatePercentage", percent.ToString());
-                if (percent == 100)
-                {
-                    UpdateBut.Visibility = Visibility.Visible;
-                    //CHT(2, "UpdatePercentage", "");
-                }
-            });
-
-        }
         private void InstallUpdateButton_Click(object sender, RoutedEventArgs e)
         {
-            clicking = false;
+            _autoClickerController.StopClicking();
             _source.RemoveHook(Hooks);
             UnregisterHotkey();
 
-            _um.ApplyUpdatesAndRestart(_update);
+            _viewModel.InstallUpdateCommand.Execute(null);
         }
 
 
