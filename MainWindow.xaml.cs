@@ -1,10 +1,11 @@
+using Clickett.Models;
+using Clickett.Native;
 using Clickett.Services;
 using Clickett.Services.Interfaces;
 using Clickett.ViewModels;
-using Clickett.Models;
-using Clickett.Native;
 using Microsoft.Win32;
 using System;
+using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -18,8 +19,8 @@ using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using Velopack;
 using Velopack.Sources;
-using Forms = System.Windows.Forms;
 using ClickMode = Clickett.Models.ClickMode;
+using Forms = System.Windows.Forms;
 
 namespace Clickett
 {
@@ -79,6 +80,7 @@ namespace Clickett
 
             _viewModel = new MainViewModel(settingsService, _notificationService, _shellService);
             DataContext = _viewModel;
+            _viewModel.PropertyChanged += MainViewModelPropertyChanged;
 
             _clickSessionController = new ClickSessionController(_clickService);
             _clickSessionController.ClickCountChanged += OnClickSessionClickCountChanged;
@@ -169,6 +171,12 @@ namespace Clickett
             ClickProfile.XPosition = xPos;
             ClickProfile.YPosition = yPos;
             ClickProfile.MouseButton = MouseButtonType.Left;
+
+            _viewModel.Jitter = jitter;
+            _viewModel.DoubleClick = doubleClick;
+            _viewModel.CountTotal = countTotal;
+            _viewModel.AlwaysOnTop = aot;
+
 
             if (_settings.Welcomed)
             {
@@ -476,6 +484,49 @@ namespace Clickett
                     _autoClickerController.StopClicking();
             });
         }
+
+
+        private void MainViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(MainViewModel.Jitter):
+                    jitter = _viewModel.Jitter;
+                    ClickProfile.Jitter = jitter;
+                    ColourToggle(jitBut, jitter);
+                    jitBorder.Opacity = jitter ? 1 : 0.4;
+                    _settings.Jitter = jitter;
+                    _settings.Save();
+                    break;
+
+                case nameof(MainViewModel.DoubleClick):
+                    doubleClick = _viewModel.DoubleClick;
+                    ClickProfile.DoubleClick = doubleClick;
+                    ColourToggle(douBut, doubleClick);
+                    douBorder.Opacity = doubleClick ? 1 : 0.4;
+                    _settings.DoubleClick = doubleClick;
+                    _settings.Save();
+                    break;
+
+                case nameof(MainViewModel.CountTotal):
+                    countTotal = _viewModel.CountTotal;
+                    ColourToggle(ctButt, countTotal);
+                    ctBorder.Opacity = countTotal ? 1 : 0.4;
+                    _settings.CountTotal = countTotal;
+                    _settings.Save();
+                    break;
+
+                case nameof(MainViewModel.AlwaysOnTop):
+                    aot = _viewModel.AlwaysOnTop;
+                    Topmost = aot;
+                    ColourToggle(aotButt, aot);
+                    aotBorder.Opacity = aot ? 1 : 0.4;
+                    _settings.AlwaysOnTop = aot;
+                    _settings.Save();
+                    break;
+            }
+        }
+
 
 
 
@@ -1153,19 +1204,11 @@ namespace Clickett
         }
         private void ToggleJit(object sender, RoutedEventArgs? e)
         {
-            jitter = _settings.Jitter = !jitter;
-            ClickProfile.Jitter = jitter;
-            ColourToggle(jitBut, jitter);
-            jitBorder.Opacity = jitter ? 1 : 0.4;
-            _settings.Save();
+            _viewModel.ToggleJitterCommand.Execute(null);
         }
         private void ToggleDou(object sender, RoutedEventArgs? e)
         {
-            doubleClick = _settings.DoubleClick = !doubleClick;
-            ClickProfile.DoubleClick = doubleClick;
-            ColourToggle(douBut, doubleClick);
-            douBorder.Opacity = doubleClick ? 1 : 0.4;
-            _settings.Save();
+            _viewModel.ToggleDoubleClickCommand.Execute(null);
         }
         private void SetLoc(object sender, RoutedEventArgs? e)
         {
@@ -1388,18 +1431,11 @@ namespace Clickett
         }
         private void ToggleCt(object sender, RoutedEventArgs? e)
         {
-            countTotal = _settings.CountTotal = !countTotal;
-            ColourToggle(ctButt, countTotal);
-            ctBorder.Opacity = countTotal ? 1 : 0.4;
-            _settings.Save();
+            _viewModel.ToggleCountTotalCommand.Execute(null);
         }
         private void ToggleAot(object sender, RoutedEventArgs? e)
         {
-            aot = _settings.AlwaysOnTop = !aot;
-            Topmost = aot;
-            ColourToggle(aotButt, aot);
-            aotBorder.Opacity = aot ? 1 : 0.4;
-            _settings.Save();
+            _viewModel.ToggleAlwaysOnTopCommand.Execute(null);
         }
         private void ToggleStartup(object sender, RoutedEventArgs? e)
         {

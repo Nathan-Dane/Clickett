@@ -16,6 +16,13 @@ namespace Clickett.ViewModels
         private bool _isSettingsOpen;
         private string _hudText = string.Empty;
 
+        //Click Profile
+        private bool _jitter;
+        private bool _doubleClick;
+        private bool _countTotal;
+        private bool _alwaysOnTop;
+
+
         public MainViewModel(
             ISettingsService settingsService,
             INotificationService notificationService,
@@ -42,6 +49,12 @@ namespace Clickett.ViewModels
 
             ShowNotificationCommand = new RelayCommand(_ =>
                 _notificationService.Show("Clickett", "Notification service is working."));
+
+            // Click Profile
+            ToggleJitterCommand = new RelayCommand(() => Jitter = !Jitter);
+            ToggleDoubleClickCommand = new RelayCommand(() => DoubleClick = !DoubleClick);
+            ToggleCountTotalCommand = new RelayCommand(() => CountTotal = !CountTotal);
+            ToggleAlwaysOnTopCommand = new RelayCommand(() => AlwaysOnTop = !AlwaysOnTop);
         }
 
         public string AssemblyVersion =>
@@ -71,11 +84,45 @@ namespace Clickett.ViewModels
             set => SetProperty(ref _hudText, value);
         }
 
+        // Click Profile
+
+        public bool Jitter
+        {
+            get => _jitter;
+            set => SetProperty(ref _jitter, value);
+        }
+
+        public bool DoubleClick
+        {
+            get => _doubleClick;
+            set => SetProperty(ref _doubleClick, value);
+        }
+
+        public bool CountTotal
+        {
+            get => _countTotal;
+            set => SetProperty(ref _countTotal, value);
+        }
+
+        public bool AlwaysOnTop
+        {
+            get => _alwaysOnTop;
+            set => SetProperty(ref _alwaysOnTop, value);
+        }
+
+
         public ICommand OpenHelpCommand { get; }
         public ICommand OpenGithubCommand { get; }
         public ICommand OpenContactCommand { get; }
         public ICommand OpenWarningCommand { get; }
         public ICommand OpenSupportCommand { get; }
         public ICommand ShowNotificationCommand { get; }
+
+        // Click Profile
+        public ICommand ToggleJitterCommand { get; }
+        public ICommand ToggleDoubleClickCommand { get; }
+        public ICommand ToggleCountTotalCommand { get; }
+        public ICommand ToggleAlwaysOnTopCommand { get; }
+
     }
 }
