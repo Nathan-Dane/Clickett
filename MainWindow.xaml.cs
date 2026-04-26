@@ -8,7 +8,6 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -57,7 +56,7 @@ namespace Clickett
         private Key hotkey;
 
         // Misc ig
-        private DispatcherTimer dispatcherTimer = new DispatcherTimer(DispatcherPriority.Send), tcResetTimer;
+        private DispatcherTimer tcResetTimer;
 
         private Forms.NotifyIcon _tbi;
 
@@ -462,10 +461,6 @@ namespace Clickett
         }
         
         // ADDITIONAL HOOKS
-        private void SetCurLoc(object sender, EventArgs? e)
-        {
-            NativeMethods.SetCursorPos((int)xPos, (int)yPos);
-        }
         private void CountTotal(object sender, EventArgs? e)
         {
             totalClickCounter++;
@@ -1177,8 +1172,6 @@ namespace Clickett
             locBorder.Opacity = doLocation ? 1 : 0.4;
             xPosInput.IsEnabled = yPosInput.IsEnabled = locSetButt.IsEnabled = doLocation ? true : false;
             if (active) locSetButt.IsEnabled = false;
-            if (doLocation) dispatcherTimer.Tick += new EventHandler(SetCurLoc);
-            else dispatcherTimer.Tick -= new EventHandler(SetCurLoc);
         }
         private void ToggleJit(object sender, RoutedEventArgs? e)
         {

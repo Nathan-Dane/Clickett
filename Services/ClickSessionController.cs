@@ -36,10 +36,12 @@ namespace Clickett.Services
 
             try
             {
+                _clickService.StartCursorLock(profile);
                 await _clickService.StartAsync(profile, _cts.Token);
             }
             finally
             {
+                _clickService.StopCursorLock();
                 IsRunning = false;
                 SessionEnded?.Invoke(this, EventArgs.Empty);
             }

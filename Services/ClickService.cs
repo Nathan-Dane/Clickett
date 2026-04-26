@@ -1,10 +1,11 @@
-﻿using System;
+﻿using Clickett.Models;
+using Clickett.Native;
+using Clickett.Services.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Clickett.Models;
-using Clickett.Native;
-using Clickett.Services.Interfaces;
+using System.Windows.Threading;
 
 namespace Clickett.Services
 {
@@ -18,6 +19,31 @@ namespace Clickett.Services
 
         public event EventHandler<long>? ClickCountChanged;
         public event EventHandler? BurstCompleted;
+
+        private readonly DispatcherTimer _cursorLockTimer;
+        private ClickProfile? _cursorLockProfile;
+
+        public ClickService()
+        {
+            _cursorLockTimer = new DispatcherTimer(DispatcherPriority.Send)
+            {
+                Interval = TimeSpan.FromMilliseconds(1)
+            };
+
+            _cursorLockTimer.Tick += (_, _) =>
+            {
+                if (_cursorLockProfile is null)
+                    return;
+
+                if (!_cursorLockProfile.LockToLocation)
+                    return;
+
+                NativeMethods.SetCursorPos(
+                    (int)_cursorLockProfile.XPosition,
+                    (int)_cursorLockProfile.YPosition);
+            };
+        }
+
 
         public async Task StartAsync(ClickProfile profile, CancellationToken cancellationToken)
         {
@@ -55,6 +81,7 @@ namespace Clickett.Services
 
         public void Stop()
         {
+            StopCursorLock();
             _cts?.Cancel();
         }
 
@@ -174,5 +201,20 @@ namespace Clickett.Services
             long count = Interlocked.Increment(ref _clickCount);
             ClickCountChanged?.Invoke(this, count);
         }
+
+        public void StartCursorLock(ClickProfile profile)
+        {
+            _cursorLockProfile = profile;
+
+            if (profile.LockToLocation)
+                _cursorLockTimer.Start();
+        }
+
+        public void StopCursorLock()
+        {
+            _cursorLockTimer.Stop();
+            _cursorLockProfile = null;
+        }
+
     }
 }

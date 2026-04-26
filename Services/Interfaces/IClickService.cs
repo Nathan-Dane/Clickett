@@ -14,5 +14,8 @@ namespace Clickett.Services.Interfaces
 
         Task StartAsync(ClickProfile profile, CancellationToken cancellationToken);
         void Stop();
+
+        void StartCursorLock(ClickProfile profile);
+        void StopCursorLock();
     }
 }
