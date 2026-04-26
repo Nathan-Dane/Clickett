@@ -1,4 +1,5 @@
 ﻿using Clickett.Native;
+using System.Windows.Input;
 
 namespace Clickett.Models
 {
@@ -19,6 +20,8 @@ namespace Clickett.Models
         public uint YPosition { get; set; }
 
         public MouseButtonType MouseButton { get; set; } = MouseButtonType.Left;
+
+        public Key Hotkey { get; set; } = Key.None;
 
         public uint ClickDownFlag
         {

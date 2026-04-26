@@ -33,6 +33,7 @@ namespace Clickett
         private readonly ISettingsService _settings;
 
         // Clicking Configuration
+        private readonly IAutoClickerController _autoClickerController;
         private readonly IClickService _clickService = new ClickService();
         private readonly IClickSessionController _clickSessionController;
         private readonly ClickProfile _clickProfile = new();
@@ -85,6 +86,14 @@ namespace Clickett
             _clickSessionController = new ClickSessionController(_clickService);
             _clickSessionController.ClickCountChanged += OnClickSessionClickCountChanged;
             _clickSessionController.SessionEnded += OnClickSessionEnded;
+
+            _autoClickerController = new AutoClickerController(_clickSessionController);
+
+            _autoClickerController.Activated += OnAutoClickerActivated;
+            _autoClickerController.Deactivated += OnAutoClickerDeactivated;
+            _autoClickerController.ClickingStarted += OnAutoClickerClickingStarted;
+            _autoClickerController.ClickingStopped += OnAutoClickerClickingStopped;
+            _autoClickerController.ClickCountChanged += OnAutoClickerClickCountChanged;
 
 
             InitializeThingies();
@@ -187,145 +196,262 @@ namespace Clickett
         // CLICKING
         private void Activate(object sender, RoutedEventArgs? e)
         {
-            if (inTuto && tutStep == 14) TutoNext(this, null);
+            if (inTuto && tutStep == 14)
+                TutoNext(this, null);
 
             if (active)
             {
                 UnregisterHotkey();
+
+                _autoClickerController.Deactivate();
+
                 active = false;
+                clicking = false;
+
                 trigSet.IsEnabled = true;
                 locSetButt.IsEnabled = doLocation;
+
                 if (trayIcon)
                 {
                     try
                     {
-                        _tbi.Icon = new System.Drawing.Icon(System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\res\iconcircbw.ico");
+                        _tbi.Icon = new System.Drawing.Icon(
+                            System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\res\iconcircbw.ico");
+
                         _tbi.ContextMenuStrip.Items[0].Text = "Activate";
                     }
                     catch { }
                 }
 
-
-
                 if (doAnimations)
                 {
-                    enableButtColBorder.BeginAnimation(OpacityProperty, new DoubleAnimation() { To = 0, Duration = TimeSpan.FromSeconds(0.3), DecelerationRatio = 0.6, AccelerationRatio = 0.2, FillBehavior = FillBehavior.HoldEnd });
-                    enableButtThumbTransform.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation() { To = 0, Duration = TimeSpan.FromSeconds(0.3), DecelerationRatio = 0.6, AccelerationRatio = 0.2, FillBehavior = FillBehavior.HoldEnd });
+                    enableButtColBorder.BeginAnimation(
+                        OpacityProperty,
+                        new DoubleAnimation()
+                        {
+                            To = 0,
+                            Duration = TimeSpan.FromSeconds(0.3),
+                            DecelerationRatio = 0.6,
+                            AccelerationRatio = 0.2,
+                            FillBehavior = FillBehavior.HoldEnd
+                        });
+
+                    enableButtThumbTransform.BeginAnimation(
+                        TranslateTransform.XProperty,
+                        new DoubleAnimation()
+                        {
+                            To = 0,
+                            Duration = TimeSpan.FromSeconds(0.3),
+                            DecelerationRatio = 0.6,
+                            AccelerationRatio = 0.2,
+                            FillBehavior = FillBehavior.HoldEnd
+                        });
                 }
                 else
                 {
-                    enableButtThumbTransform.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation() { To = 0, Duration = TimeSpan.Zero });
-                    enableButtColBorder.BeginAnimation(OpacityProperty, new DoubleAnimation() { To = 0, Duration = TimeSpan.Zero, FillBehavior = FillBehavior.HoldEnd });
+                    enableButtThumbTransform.BeginAnimation(
+                        TranslateTransform.XProperty,
+                        new DoubleAnimation()
+                        {
+                            To = 0,
+                            Duration = TimeSpan.Zero
+                        });
+
+                    enableButtColBorder.BeginAnimation(
+                        OpacityProperty,
+                        new DoubleAnimation()
+                        {
+                            To = 0,
+                            Duration = TimeSpan.Zero,
+                            FillBehavior = FillBehavior.HoldEnd
+                        });
                 }
+
                 thumbBackDrop.Opacity = 1;
                 thumbRect.SetResourceReference(EffectProperty, "thumbShadowDisabled");
                 enableButtThumb.SetResourceReference(BackgroundProperty, "thumbBackDisabled");
                 thumbLinesBorder.SetResourceReference(BackgroundProperty, "ThumbLineDisabled");
-
-
-
             }
             else
             {
-                if (hotkey == Key.None) { MakeNotification("Slow down there!", "Set a hotkey first\nPretty please"); triggerDis.Text = "Choose a hotkey"; return; }
-                try { RegisterHotkey(); }
+                if (hotkey == Key.None)
+                {
+                    MakeNotification("Slow down there!", "Set a hotkey first\nPretty please");
+                    triggerDis.Text = "Choose a hotkey";
+                    return;
+                }
+
+                try
+                {
+                    RegisterHotkey();
+                }
                 catch
                 {
-                    MakeNotification("Ah dang! There was an error!", "Could not register this hotkey.\nTry another or restart the system.");
+                    MakeNotification(
+                        "Ah dang! There was an error!",
+                        "Could not register this hotkey.\nTry another or restart the system.");
+
                     hotkey = Key.None;
                     triggerDis.Text = "oops Fail";
                     trigBorder.ToolTip = "Try something else";
                     return;
                 }
+
+                _clickProfile.Hotkey = hotkey;
+                _autoClickerController.UpdateProfile(_clickProfile);
+                _autoClickerController.Activate();
+
                 active = true;
                 clicking = false;
-                trigSet.IsEnabled = locSetButt.IsEnabled = false;
+
+                trigSet.IsEnabled = false;
+                locSetButt.IsEnabled = false;
+
                 if (trayIcon)
                 {
                     try
                     {
-                        _tbi.Icon = new System.Drawing.Icon(System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\res\iconcirc.ico");
+                        _tbi.Icon = new System.Drawing.Icon(
+                            System.IO.Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\res\iconcirc.ico");
+
                         _tbi.ContextMenuStrip.Items[0].Text = "Deactivate";
                     }
                     catch { }
                 }
 
+                if (doAnimations)
+                {
+                    enableButtColBorder.BeginAnimation(
+                        OpacityProperty,
+                        new DoubleAnimation()
+                        {
+                            To = 1,
+                            Duration = TimeSpan.FromSeconds(0.3),
+                            DecelerationRatio = 0.6,
+                            AccelerationRatio = 0.2,
+                            FillBehavior = FillBehavior.HoldEnd
+                        });
 
-                if (doAnimations){
-                    enableButtColBorder.BeginAnimation(OpacityProperty, new DoubleAnimation() { To = 1, Duration = TimeSpan.FromSeconds(0.3), DecelerationRatio = 0.6, AccelerationRatio = 0.2, FillBehavior = FillBehavior.HoldEnd });
-                    enableButtThumbTransform.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation() { To = 382, Duration = TimeSpan.FromSeconds(0.3), DecelerationRatio = 0.6, AccelerationRatio = 0.2, FillBehavior = FillBehavior.HoldEnd });
-                }else {
-                    enableButtThumbTransform.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation() { To = 382, Duration = TimeSpan.Zero });
-                    enableButtColBorder.BeginAnimation(OpacityProperty, new DoubleAnimation() { To = 1, Duration = TimeSpan.Zero, FillBehavior = FillBehavior.HoldEnd });
+                    enableButtThumbTransform.BeginAnimation(
+                        TranslateTransform.XProperty,
+                        new DoubleAnimation()
+                        {
+                            To = 382,
+                            Duration = TimeSpan.FromSeconds(0.3),
+                            DecelerationRatio = 0.6,
+                            AccelerationRatio = 0.2,
+                            FillBehavior = FillBehavior.HoldEnd
+                        });
                 }
+                else
+                {
+                    enableButtThumbTransform.BeginAnimation(
+                        TranslateTransform.XProperty,
+                        new DoubleAnimation()
+                        {
+                            To = 382,
+                            Duration = TimeSpan.Zero
+                        });
+
+                    enableButtColBorder.BeginAnimation(
+                        OpacityProperty,
+                        new DoubleAnimation()
+                        {
+                            To = 1,
+                            Duration = TimeSpan.Zero,
+                            FillBehavior = FillBehavior.HoldEnd
+                        });
+                }
+
                 thumbBackDrop.Opacity = 0;
                 thumbRect.SetResourceReference(EffectProperty, "thumbShadowEnabled");
                 enableButtThumb.SetResourceReference(BackgroundProperty, "thumbBackEnabled");
                 thumbLinesBorder.SetResourceReference(BackgroundProperty, "ThumbLineEnabled");
-
-
-
             }
         }
-        private void HotkeyPressed() // Enters click state when hotkey pressed
+
+        private void HotkeyPressed()
         {
-            switch (modeInt)
-            {
-                case 0:                                 // Burst
-                    if (clicking) {
-                        ExitClickState();
-                        clickCounter = 0;
-                    } else {
-                        clickCounter = 0;
-                        EnterClickState();
-                    }
-                    break;
-                case 1:                                 // Toggle
-                    if (clicking) ExitClickState();
-                    else EnterClickState();
-                    break;
-                case 2:                                 // Hold
-                    if (clicking) return;
-
-                    dispatcherTimer.Tick += new EventHandler(HoldCheck);
-                    EnterClickState();
-                    break;
-                default:
-                    break;
-            }
+            _clickProfile.Hotkey = hotkey;
+            _autoClickerController.UpdateProfile(_clickProfile);
+            _autoClickerController.HandleHotkeyPressed();
         }
-        private void EnterClickState()
+
+
+        private void OnAutoClickerActivated(object? sender, EventArgs e)
+        {
+            active = true;
+            clicking = false;
+
+            ApplyActivatedVisualState();
+        }
+
+        private void OnAutoClickerDeactivated(object? sender, EventArgs e)
+        {
+            active = false;
+            clicking = false;
+
+            ApplyDeactivatedVisualState();
+        }
+
+        private void OnAutoClickerClickingStarted(object? sender, EventArgs e)
         {
             clicking = true;
+
+            ApplyClickingVisualState();
+        }
+
+        private void OnAutoClickerClickingStopped(object? sender, EventArgs e)
+        {
+            clicking = false;
+
+            ApplyNotClickingVisualState();
+        }
+
+        private void OnAutoClickerClickCountChanged(object? sender, long count)
+        {
+            totalClickCounter++;
+        }
+
+        // VISUAL STATES
+        private void ApplyActivatedVisualState()
+        {
+            trigSet.IsEnabled = false;
+            locSetButt.IsEnabled = false;
+
+            // Move the "enabled toggle" animations from Activate() here.
+        }
+
+        private void ApplyDeactivatedVisualState()
+        {
+            trigSet.IsEnabled = true;
+            locSetButt.IsEnabled = doLocation;
+
+            // Move the "disabled toggle" animations from Activate() here.
+        }
+
+        private void ApplyClickingVisualState()
+        {
             Focusable = false;
 
-            dispatcherTimer.Interval = TimeSpan.FromMilliseconds(rocket ? 1 : (clickInterval * 0.8));
             hwnd = new WindowInteropHelper(this).Handle;
             SetWindowExTransparent(hwnd);
+
             fullCanvas.Opacity = cOpacity;
-
-            fullGrid.RenderTransform = new ScaleTransform(0.94,0.94);
-            var blur = new BlurEffect();
-            blur.Radius = 10;
-            fullGrid.Effect = blur;
-
-            dispatcherTimer.Start();
-
-            _ = _clickSessionController.StartAsync(_clickProfile);
+            fullGrid.RenderTransform = new ScaleTransform(0.94, 0.94);
+            fullGrid.Effect = new BlurEffect { Radius = 10 };
         }
-        private void ExitClickState()
+
+        private void ApplyNotClickingVisualState()
         {
-            _clickSessionController.Stop();
-
-            dispatcherTimer.Stop();
-            clicking = false;
             Focusable = true;
-            SetWindowExDefault(hwnd);
-            fullCanvas.Opacity = nOpacity;
 
+            SetWindowExDefault(hwnd);
+
+            fullCanvas.Opacity = nOpacity;
             fullGrid.RenderTransform = new ScaleTransform(1, 1);
             fullGrid.Effect = null;
-            Thread.Sleep(1);
+
             if (countTotal)
             {
                 _settings.TotalClicks += totalClickCounter;
@@ -339,14 +465,6 @@ namespace Clickett
         private void SetCurLoc(object sender, EventArgs? e)
         {
             NativeMethods.SetCursorPos((int)xPos, (int)yPos);
-        }
-        private void HoldCheck(object sender, EventArgs? e)
-        {
-            if (Keyboard.IsKeyUp(hotkey))
-            {
-                dispatcherTimer.Tick -= HoldCheck;
-                ExitClickState();
-            }
         }
         private void CountTotal(object sender, EventArgs? e)
         {
@@ -362,7 +480,7 @@ namespace Clickett
             Dispatcher.Invoke(() =>
             {
                 if (clicking)
-                    ExitClickState();
+                    _autoClickerController.StopClicking();
             });
         }
 
