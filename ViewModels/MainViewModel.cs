@@ -10,6 +10,9 @@ namespace Clickett.ViewModels
         private readonly ISettingsService _settingsService;
         private readonly INotificationService _notificationService;
         private readonly IShellService _shellService;
+        private readonly IStartupService _startupService;
+        private readonly ITrayIconService _trayIconService;
+
 
         private bool _isActive;
         private bool _isClicking;
@@ -22,15 +25,24 @@ namespace Clickett.ViewModels
         private bool _countTotal;
         private bool _alwaysOnTop;
 
+        //Settings
+        private bool _startup;
+        private bool _trayIcon;
+        private bool _minimizeToTray;
+
 
         public MainViewModel(
-            ISettingsService settingsService,
-            INotificationService notificationService,
-            IShellService shellService)
+                ISettingsService settingsService,
+                INotificationService notificationService,
+                IShellService shellService,
+                IStartupService startupService,
+                ITrayIconService trayIconService)
         {
             _settingsService = settingsService;
             _notificationService = notificationService;
             _shellService = shellService;
+            _startupService = startupService;
+            _trayIconService = trayIconService;
 
             OpenHelpCommand = new RelayCommand(() =>
                 _shellService.OpenUrl("https://clickett.app/help"));
@@ -47,15 +59,11 @@ namespace Clickett.ViewModels
             OpenSupportCommand = new RelayCommand(() =>
                 _shellService.OpenUrl("https://nathandagdane.github.io/Clickett/Donate/"));
 
-            ShowNotificationCommand = new RelayCommand(_ =>
-                _notificationService.Show("Clickett", "Notification service is working."));
-
-            // Click Profile
-            ToggleJitterCommand = new RelayCommand(() => Jitter = !Jitter);
-            ToggleDoubleClickCommand = new RelayCommand(() => DoubleClick = !DoubleClick);
-            ToggleCountTotalCommand = new RelayCommand(() => CountTotal = !CountTotal);
-            ToggleAlwaysOnTopCommand = new RelayCommand(() => AlwaysOnTop = !AlwaysOnTop);
+            ToggleStartupCommand = new RelayCommand(ToggleStartup);
+            ToggleTrayIconCommand = new RelayCommand(ToggleTrayIcon);
+            ToggleMinimizeToTrayCommand = new RelayCommand(ToggleMinimizeToTray);
         }
+
 
         public string AssemblyVersion =>
             "v" + Assembly.GetExecutingAssembly().GetName().Version + " - Beta";
@@ -110,6 +118,71 @@ namespace Clickett.ViewModels
             set => SetProperty(ref _alwaysOnTop, value);
         }
 
+        // Settings
+        public bool Startup
+        {
+            get => _startup;
+            set => SetProperty(ref _startup, value);
+        }
+
+        public bool TrayIcon
+        {
+            get => _trayIcon;
+            set => SetProperty(ref _trayIcon, value);
+        }
+
+        public bool MinimizeToTray
+        {
+            get => _minimizeToTray;
+            set => SetProperty(ref _minimizeToTray, value);
+        }
+
+        private void ToggleStartup()
+        {
+            Startup = !Startup;
+
+            if (Startup)
+                _startupService.EnableStartup();
+            else
+                _startupService.DisableStartup();
+
+            _settingsService.Set("startup", Startup);
+            _settingsService.Save();
+        }
+
+        private void ToggleTrayIcon()
+        {
+            TrayIcon = !TrayIcon;
+
+            if (TrayIcon)
+                _trayIconService.Show(false);
+            else
+                _trayIconService.Hide();
+
+            if (!TrayIcon && MinimizeToTray)
+                MinimizeToTray = false;
+
+            _settingsService.Set("trayIcon", TrayIcon);
+            _settingsService.Set("minToTray", MinimizeToTray);
+            _settingsService.Save();
+        }
+
+        private void ToggleMinimizeToTray()
+        {
+            MinimizeToTray = !MinimizeToTray;
+
+            if (MinimizeToTray && !TrayIcon)
+            {
+                TrayIcon = true;
+                _trayIconService.Show(false);
+            }
+
+            _settingsService.Set("trayIcon", TrayIcon);
+            _settingsService.Set("minToTray", MinimizeToTray);
+            _settingsService.Save();
+        }
+
+
 
         public ICommand OpenHelpCommand { get; }
         public ICommand OpenGithubCommand { get; }
@@ -124,5 +197,9 @@ namespace Clickett.ViewModels
         public ICommand ToggleCountTotalCommand { get; }
         public ICommand ToggleAlwaysOnTopCommand { get; }
 
+        // Settings
+        public ICommand ToggleStartupCommand { get; }
+        public ICommand ToggleTrayIconCommand { get; }
+        public ICommand ToggleMinimizeToTrayCommand { get; }
     }
 }

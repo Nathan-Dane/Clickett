@@ -6,6 +6,7 @@ using Clickett.ViewModels;
 using Microsoft.Win32;
 using System;
 using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -35,9 +36,9 @@ namespace Clickett
 
 
         // Clicking Configuration
-        private readonly IAutoClickerController _autoClickerController;
         private readonly IClickService _clickService = new ClickService();
-        private readonly IClickSessionController _clickSessionController;
+        private IClickSessionController _clickSessionController;
+        private IAutoClickerController _autoClickerController;
         public bool interType, doLocation, rocket, jitter, doubleClick;
         private int clickInterval, modeInt, burstCount, threads;
         private uint clickDo, clickUp, xPos, yPos;
@@ -58,6 +59,7 @@ namespace Clickett
         private Key hotkey;
 
         // Misc ig
+        private bool _isInitialized;
         private DispatcherTimer tcResetTimer;
 
         private UpdateManager _um;
@@ -72,21 +74,36 @@ namespace Clickett
         // STARTUP LOGIC
         public MainWindow()
         {
-
+            // Create non-visual services/controllers FIRST
             ISettingsService settingsService = new SettingsService();
             _settings = settingsService;
+
             _notificationService = new NotificationService();
             _shellService = new ShellService();
 
-            _viewModel = new MainViewModel(settingsService, _notificationService, _shellService);
-            DataContext = _viewModel;
-            _viewModel.PropertyChanged += MainViewModelPropertyChanged;
+            IStartupService startupService = new StartupService();
+            ITrayIconService trayIconService = new TrayIconService();
+            _trayIconService = trayIconService;
 
             _clickSessionController = new ClickSessionController(_clickService);
+            _autoClickerController = new AutoClickerController(_clickSessionController);
+
+            _viewModel = new MainViewModel(
+                settingsService,
+                _notificationService,
+                _shellService,
+                startupService,
+                trayIconService);
+
+            // Now XAML can safely fire events that touch ClickProfile
+            InitializeComponent();
+
+            DataContext = _viewModel;
+
+            _viewModel.PropertyChanged += MainViewModelPropertyChanged;
+
             _clickSessionController.ClickCountChanged += OnClickSessionClickCountChanged;
             _clickSessionController.SessionEnded += OnClickSessionEnded;
-
-            _autoClickerController = new AutoClickerController(_clickSessionController);
 
             _autoClickerController.Activated += OnAutoClickerActivated;
             _autoClickerController.Deactivated += OnAutoClickerDeactivated;
@@ -103,10 +120,9 @@ namespace Clickett
             };
             _trayIconService.ExitRequested += (_, _) => Close();
 
-
-            InitializeComponent();
-
             InitializeThingies();
+            _isInitialized = true;
+
             TextOptions.SetTextRenderingMode(this, TextRenderingMode.Auto);
 
             _um = new UpdateManager(new GithubSource("https://github.com/NathanDagDane/Clickett", null, false));
@@ -114,6 +130,9 @@ namespace Clickett
             UpdateBut.Visibility = Visibility.Hidden;
             CheckUpdate(false);
         }
+
+
+
 
         private void InitializeThingies()
         {
@@ -186,6 +205,10 @@ namespace Clickett
             _viewModel.DoubleClick = doubleClick;
             _viewModel.CountTotal = countTotal;
             _viewModel.AlwaysOnTop = aot;
+
+            _viewModel.Startup = startup;
+            _viewModel.TrayIcon = trayIcon;
+            _viewModel.MinimizeToTray = minToTray;
 
 
             if (_settings.Welcomed)
@@ -522,6 +545,25 @@ namespace Clickett
                     _settings.AlwaysOnTop = aot;
                     _settings.Save();
                     break;
+
+                case nameof(MainViewModel.Startup):
+                    startup = _viewModel.Startup;
+                    ColourToggle(startupButt, startup);
+                    startupBorder.Opacity = startup ? 1 : 0.4;
+                    break;
+
+                case nameof(MainViewModel.TrayIcon):
+                    trayIcon = _viewModel.TrayIcon;
+                    ColourToggle(trayButt, trayIcon);
+                    trayBorder.Opacity = trayIcon ? 1 : 0.4;
+                    break;
+
+                case nameof(MainViewModel.MinimizeToTray):
+                    minToTray = _viewModel.MinimizeToTray;
+                    ColourToggle(minTrayButt, minToTray);
+                    minTrayBorder.Opacity = minToTray ? 1 : 0.4;
+                    break;
+
             }
         }
 
@@ -1202,10 +1244,16 @@ namespace Clickett
         }
         private void ToggleJit(object sender, RoutedEventArgs? e)
         {
+            if (!_isInitialized || _viewModel == null)
+                return;
+
             _viewModel.ToggleJitterCommand.Execute(null);
         }
         private void ToggleDou(object sender, RoutedEventArgs? e)
         {
+            if (!_isInitialized || _viewModel == null)
+                return;
+
             _viewModel.ToggleDoubleClickCommand.Execute(null);
         }
         private void SetLoc(object sender, RoutedEventArgs? e)
@@ -1429,71 +1477,40 @@ namespace Clickett
         }
         private void ToggleCt(object sender, RoutedEventArgs? e)
         {
+            if (!_isInitialized || _viewModel == null)
+                return;
+
             _viewModel.ToggleCountTotalCommand.Execute(null);
         }
         private void ToggleAot(object sender, RoutedEventArgs? e)
         {
+            if (!_isInitialized || _viewModel == null)
+                return;
+
             _viewModel.ToggleAlwaysOnTopCommand.Execute(null);
         }
         private void ToggleStartup(object sender, RoutedEventArgs? e)
         {
-            startup = _settings.Startup = !startup;
+            if (!_isInitialized || _viewModel == null)
+                return;
 
-            if (startup)
-                _startupService.EnableStartup();
-            else
-                _startupService.DisableStartup();
-
-            ColourToggle(startupButt, startup);
-            startupBorder.Opacity = startup ? 1 : 0.4;
-
-            _settings.Save();
+            _viewModel.ToggleStartupCommand.Execute(null);
         }
 
         private void ToggleTray(object sender, RoutedEventArgs? e)
         {
-            try
-            {
-                if (!trayIcon)
-                    _trayIconService.Show(_autoClickerController.IsActive);
-                else
-                {
-                    _trayIconService.Hide();
+            if (!_isInitialized || _viewModel == null)
+                return;
 
-                    if (minToTray)
-                        ToggleMinTray(this, null);
-                }
-
-                trayIcon = _settings.TrayIcon = !trayIcon;
-
-                ColourToggle(trayButt, trayIcon);
-                trayBorder.Opacity = trayIcon ? 1 : 0.4;
-
-                _settings.Save();
-            }
-            catch
-            {
-                MakeNotification(
-                    "Tray icon died",
-                    "There was a problem setting up the tray icon. The tray icon option has been disabled.");
-
-                if (trayIcon)
-                    _trayIconService.Hide();
-
-                trayIcon = _settings.TrayIcon = false;
-                ColourToggle(trayButt, false);
-                trayBorder.Opacity = 0.4;
-                _settings.Save();
-            }
+            _viewModel.ToggleTrayIconCommand.Execute(null);
         }
 
         private void ToggleMinTray(object sender, RoutedEventArgs? e)
         {
-            minToTray = _settings.MinimizeToTray = !minToTray;
-            ColourToggle(minTrayButt, minToTray);
-            minTrayBorder.Opacity = minToTray ? 1 : 0.4;
-            if (minToTray && !trayIcon) ToggleTray(this, null);
-            _settings.Save();
+            if (!_isInitialized || _viewModel == null)
+                return;
+
+            _viewModel.ToggleMinimizeToTrayCommand.Execute(null);
         }
         private void ColourToggle(Button b, bool colour)
         {
